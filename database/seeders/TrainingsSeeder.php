@@ -19,6 +19,8 @@ class TrainingsSeeder extends Seeder
         $start = Carbon::today()->startOfDay();
 
         $roomsByType = Room::all()->groupBy('type');
+        $allRooms = Room::all();
+
         $trainers = User::where('role', 'trainer')->get();
 
         if ($trainers->isEmpty()) {
@@ -35,12 +37,14 @@ class TrainingsSeeder extends Seeder
         $busyTrainer = [];
 
         $created = 0;
+        $skippedNoRoom = 0;
+        $skippedNoTrainer = 0;
 
         for ($dayOffset = 0; $dayOffset < 28; $dayOffset++) {
             $date = $start->copy()->addDays($dayOffset)->format('Y-m-d');
 
             foreach ($times as $time) {
-                $want = rand(2, 6);
+                $want = rand(2, 5);
 
                 for ($i = 0; $i < $want; $i++) {
                     $type = $this->pickTypeWeighted();
@@ -51,13 +55,15 @@ class TrainingsSeeder extends Seeder
 
                     $roomType = Training::getRoomTypeByTrainingType($type);
 
-                    $room = $this->pickFreeRoom($roomsByType, $roomType, $date, $time, $busyRoom);
+                    $room = $this->pickFreeRoom($roomsByType, $allRooms, $roomType, $date, $time, $busyRoom);
                     if (!$room) {
+                        $skippedNoRoom++;
                         continue;
                     }
 
                     $trainer = $this->pickFreeTrainer($trainers, $type, $date, $time, $busyTrainer);
                     if (!$trainer) {
+                        $skippedNoTrainer++;
                         continue;
                     }
 
@@ -70,12 +76,13 @@ class TrainingsSeeder extends Seeder
                         'type' => $type,
                         'room_type' => $roomType,
                         'trainer_id' => $trainer->id,
+                        'is_cancelled' => false,
                     ]);
 
                     $training->rooms()->attach($room->id);
 
-                    $busyRoom[$this->key($date, $time, $room->id)] = true;
-                    $busyTrainer[$this->key($date, $time, $trainer->id)] = true;
+                    $busyRoom[$this->key($date, $time, (int) $room->id)] = true;
+                    $busyTrainer[$this->key($date, $time, (int) $trainer->id)] = true;
 
                     $created++;
                 }
@@ -83,6 +90,8 @@ class TrainingsSeeder extends Seeder
         }
 
         $this->command->info('Добавлено ' . $created . ' тренировок на 28 дней от сегодняшней даты');
+        $this->command->info('Пропущено без свободного помещения: ' . $skippedNoRoom);
+        $this->command->info('Пропущено без свободного тренера: ' . $skippedNoTrainer);
     }
 
     private function key(string $date, string $time, int $id): string
@@ -105,12 +114,12 @@ class TrainingsSeeder extends Seeder
         return $pool[array_rand($pool)];
     }
 
-    private function pickFreeRoom($roomsByType, string $roomType, string $date, string $time, array $busyRoom)
+    private function pickFreeRoom($roomsByType, $allRooms, string $roomType, string $date, string $time, array $busyRoom)
     {
         $rooms = $roomsByType[$roomType] ?? collect();
 
         if ($rooms->isEmpty()) {
-            $rooms = Room::all();
+            $rooms = $allRooms;
         }
 
         $candidates = $rooms->shuffle();
@@ -127,33 +136,23 @@ class TrainingsSeeder extends Seeder
 
     private function pickFreeTrainer($trainers, string $type, string $date, string $time, array $busyTrainer)
     {
-        if ($trainers->isEmpty()) {
+        $needSpec = $this->getRequiredSpecialization($type);
+
+        $candidates = $trainers->filter(function ($trainer) use ($needSpec, $date, $time, $busyTrainer) {
+            if ($trainer->specialization !== $needSpec) {
+                return false;
+            }
+
+            $key = $this->key($date, $time, (int) $trainer->id);
+
+            return !isset($busyTrainer[$key]);
+        });
+
+        if ($candidates->isEmpty()) {
             return null;
         }
 
-        $needSpec = $this->getRequiredSpecialization($type);
-        $candidates = $trainers;
-
-        if ($needSpec !== null) {
-            $filtered = $trainers->filter(function ($t) use ($needSpec) {
-                return isset($t->specialization) && $t->specialization === $needSpec;
-            });
-
-            if ($filtered->isNotEmpty()) {
-                $candidates = $filtered;
-            }
-        }
-
-        $candidates = $candidates->shuffle();
-
-        foreach ($candidates as $trainer) {
-            $k = $this->key($date, $time, (int) $trainer->id);
-            if (!isset($busyTrainer[$k])) {
-                return $trainer;
-            }
-        }
-
-        return null;
+        return $candidates->shuffle()->first();
     }
 
     private function getRequiredSpecialization(string $type): ?string
@@ -182,13 +181,17 @@ class TrainingsSeeder extends Seeder
             case 'kids':
             case 'massage':
                 return 1;
+
             case 'split':
                 return 2;
+
             case 'group':
                 return rand(6, 14);
+
             case 'yoga':
             case 'fitness':
                 return rand(6, 14);
+
             default:
                 return rand(2, 10);
         }

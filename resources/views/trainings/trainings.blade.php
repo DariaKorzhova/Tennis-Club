@@ -211,12 +211,21 @@
     var formCancel = document.getElementById('formCancel');
     var formReq = document.getElementById('formTrainerRequest');
     var info = document.getElementById('modalInfo');
+function openModal() {
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('no-scroll');
 
-    function openModal() {
-        modal.classList.remove('is-hidden');
-        modal.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('no-scroll');
+    const dialog = modal.querySelector('.modal__dialog');
+    if (dialog) {
+        dialog.scrollTop = 0;
     }
+
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
 
     function closeModal() {
         modal.classList.add('is-hidden');

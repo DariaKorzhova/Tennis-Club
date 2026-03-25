@@ -123,7 +123,7 @@ class TrainingController extends Controller
             $roomName = $room ? $room->name : 'Не указано';
             $roomId = $room ? $room->id : null;
 
-            $trainerName = $training->trainer ? $training->trainer->name : 'Не назначен';
+            $trainerName = $training->trainer ? $training->trainer->full_name : 'Не назначен';
             $trainerId = $training->trainer ? $training->trainer->id : null;
 
             $bookedCount = $training->users()->wherePivot('status', 'active')->count();
