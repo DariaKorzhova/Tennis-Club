@@ -22,6 +22,11 @@ class Room extends Model
         return $this->belongsToMany(Training::class, 'room_training');
     }
 
+    public function courtBookings()
+    {
+        return $this->hasMany(CourtBooking::class);
+    }
+
     public static function getRoomTypes()
     {
         return [

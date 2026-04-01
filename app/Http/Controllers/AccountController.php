@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CancellationRequest;
+use App\Models\CourtBooking;
 use App\Models\Training;
 use App\Models\User;
 use App\Notifications\TwoFactorCodeNotification;
@@ -36,7 +37,11 @@ class AccountController extends Controller
                 $training->has_pending_cancel = in_array($training->id, $pendingIds, true);
             });
 
-            return view('account.index', compact('user', 'trainings'));
+            return view('account.index', [
+                'user' => $user,
+                'trainings' => $trainings,
+                'courtBookings' => collect(),
+            ]);
         }
 
         $trainings = $user->bookedTrainings()
@@ -46,7 +51,24 @@ class AccountController extends Controller
             ->orderBy('time')
             ->get();
 
-        return view('account.index', compact('user', 'trainings'));
+        $courtBookings = $user->courtBookings()
+            ->with('room')
+            ->where('status', 'active')
+            ->orderBy('date')
+            ->orderBy('time')
+            ->get()
+            ->groupBy(function ($booking) {
+                return $booking->booking_group ?: $booking->id;
+            })
+            ->map(function ($group) {
+                $first = $group->sortBy('time')->first();
+                $first->hours_count = $group->count();
+                $first->total_price = $group->sum('price');
+                return $first;
+            })
+            ->values();
+
+        return view('account.index', compact('user', 'trainings', 'courtBookings'));
     }
 
     public function edit()
@@ -65,16 +87,19 @@ class AccountController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name' => ['required', 'string', 'max:255', 'regex:/^[А-Яа-яЁё]+$/u'],
             'last_name' => ['required', 'string', 'max:255', 'regex:/^[А-Яа-яЁё]+$/u'],
-            'birth_date' => ['required', 'date_format:d.m.Y', 'before:today'],
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'birth_date' => ['required', 'date', 'before:today'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'crop_x' => ['nullable', 'numeric', 'min:0'],
+            'crop_y' => ['nullable', 'numeric', 'min:0'],
+            'crop_size' => ['nullable', 'numeric', 'min:10'],
         ], [
             'first_name.regex' => 'Имя должно содержать только русские буквы.',
             'last_name.regex' => 'Фамилия должна содержать только русские буквы.',
-            'birth_date.date_format' => 'Дата рождения должна быть в формате ДД.ММ.ГГГГ.',
+            'birth_date.date' => 'Укажите корректную дату рождения.',
             'birth_date.before' => 'Дата рождения должна быть раньше сегодняшнего дня.',
             'photo.image' => 'Файл должен быть изображением.',
             'photo.mimes' => 'Фото должно быть в формате jpg, jpeg, png или webp.',
-            'photo.max' => 'Размер фото не должен превышать 2 МБ.',
+            'photo.max' => 'Размер фото не должен превышать 4 МБ.',
         ]);
 
         if ($validator->fails()) {
@@ -83,19 +108,83 @@ class AccountController extends Controller
 
         $user->first_name = $this->normalizeRussianName($request->first_name);
         $user->last_name = $this->normalizeRussianName($request->last_name);
-        $user->birth_date = Carbon::createFromFormat('d.m.Y', $request->birth_date)->format('Y-m-d');
+        $user->birth_date = Carbon::parse($request->birth_date)->format('Y-m-d');
 
         if ($request->hasFile('photo')) {
             if ($user->photo && Storage::disk('public')->exists($user->photo)) {
                 Storage::disk('public')->delete($user->photo);
             }
 
-            $user->photo = $request->file('photo')->store('profiles', 'public');
+            $path = $this->storeCroppedProfilePhoto(
+                $request->file('photo'),
+                $request->input('crop_x'),
+                $request->input('crop_y'),
+                $request->input('crop_size')
+            );
+
+            $user->photo = $path;
         }
 
         $user->save();
 
         return redirect()->route('account')->with('success', 'Данные аккаунта успешно обновлены.');
+    }
+
+    public function cancelCourtBooking($group)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $bookings = CourtBooking::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where(function ($q) use ($group) {
+                $q->where('booking_group', $group)->orWhere('id', $group);
+            })
+            ->get();
+
+        if ($bookings->isEmpty()) {
+            return back()->with('error', 'Аренда не найдена.');
+        }
+
+        foreach ($bookings as $booking) {
+            $booking->status = 'cancelled';
+            $booking->save();
+        }
+
+        return back()->with('success', 'Аренда корта отменена.');
+    }
+
+    public function updateCourtBookingPersons(Request $request, $group)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $request->validate([
+            'persons' => ['required', 'integer', 'min:1', 'max:4'],
+        ], [
+            'persons.required' => 'Укажите количество человек.',
+            'persons.integer' => 'Количество человек должно быть числом.',
+            'persons.min' => 'Минимум 1 человек.',
+            'persons.max' => 'Максимум 4 человека.',
+        ]);
+
+        $bookings = CourtBooking::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where(function ($q) use ($group) {
+                $q->where('booking_group', $group)->orWhere('id', $group);
+            })
+            ->get();
+
+        if ($bookings->isEmpty()) {
+            return back()->with('error', 'Аренда не найдена.');
+        }
+
+        foreach ($bookings as $booking) {
+            $booking->persons = (int) $request->persons;
+            $booking->save();
+        }
+
+        return back()->with('success', 'Количество человек обновлено.');
     }
 
     public function sendPasswordCode(Request $request)
@@ -193,5 +282,80 @@ class AccountController extends Controller
     {
         $value = trim(mb_strtolower($value));
         return mb_convert_case($value, MB_CASE_TITLE, 'UTF-8');
+    }
+
+    private function storeCroppedProfilePhoto($file, $cropX = null, $cropY = null, $cropSize = null): string
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+        $tmpPath = $file->getRealPath();
+
+        switch ($extension) {
+            case 'jpg':
+            case 'jpeg':
+                $source = imagecreatefromjpeg($tmpPath);
+                break;
+            case 'png':
+                $source = imagecreatefrompng($tmpPath);
+                break;
+            case 'webp':
+                $source = imagecreatefromwebp($tmpPath);
+                break;
+            default:
+                return $file->store('profiles', 'public');
+        }
+
+        if (!$source) {
+            return $file->store('profiles', 'public');
+        }
+
+        $srcWidth = imagesx($source);
+        $srcHeight = imagesy($source);
+
+        $cropX = is_numeric($cropX) ? (int) $cropX : 0;
+        $cropY = is_numeric($cropY) ? (int) $cropY : 0;
+        $cropSize = is_numeric($cropSize) ? (int) $cropSize : min($srcWidth, $srcHeight);
+
+        if ($cropSize < 10) {
+            $cropSize = min($srcWidth, $srcHeight);
+        }
+
+        if ($cropX + $cropSize > $srcWidth) {
+            $cropX = max(0, $srcWidth - $cropSize);
+        }
+
+        if ($cropY + $cropSize > $srcHeight) {
+            $cropY = max(0, $srcHeight - $cropSize);
+        }
+
+        $finalSize = 600;
+        $result = imagecreatetruecolor($finalSize, $finalSize);
+
+        imagecopyresampled(
+            $result,
+            $source,
+            0,
+            0,
+            $cropX,
+            $cropY,
+            $finalSize,
+            $finalSize,
+            $cropSize,
+            $cropSize
+        );
+
+        $dir = storage_path('app/public/profiles');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+
+        $fileName = 'profiles/' . uniqid('profile_', true) . '.jpg';
+        $fullPath = storage_path('app/public/' . $fileName);
+
+        imagejpeg($result, $fullPath, 90);
+
+        imagedestroy($source);
+        imagedestroy($result);
+
+        return $fileName;
     }
 }

@@ -33,7 +33,7 @@
         });
 
         $initials = mb_strtoupper(
-            mb_substr($user->first_name, 0, 1) . mb_substr($user->last_name, 0, 1)  
+            mb_substr($user->first_name, 0, 1) . mb_substr($user->last_name, 0, 1)
         );
         $photoUrl = $user->photo_url ?? null;
     @endphp
@@ -52,6 +52,7 @@
                 <div class="k">Имя</div>
                 <div class="v">{{ $user->full_name }}</div>
             </div>
+
             <div class="account-info__row">
                 <div class="k">Email</div>
                 <div class="v">{{ $user->email }}</div>
@@ -59,21 +60,21 @@
 
             <div class="account-info__row">
                 <div class="k">Дата рождения</div>
-                    <div class="v">{{ \Carbon\Carbon::parse($user->birth_date)->format('d.m.Y') }}</div>
+                <div class="v">{{ \Carbon\Carbon::parse($user->birth_date)->format('d.m.Y') }}</div>
+            </div>
+
+            @if($user->isTrainer())
+                <div class="account-info__row">
+                    <div class="k">Специализация</div>
+                    <div class="v">{{ $user->specialization_name }}</div>
                 </div>
-                    @if($user->isTrainer())
-                        <div class="account-info__row">
-                            <div class="k">Специализация</div>
-                            <div class="v">{{ $user->specialization_name }}</div>
-                        </div>
-                    @endif
+            @endif
         </div>
+
         <div class="account-actions">
-    <a href="{{ route('account.edit') }}" class="account-edit-btn">Редактировать</a>
-</div>
+            <a href="{{ route('account.edit') }}" class="account-edit-btn">Редактировать</a>
+        </div>
     </div>
-
-
 
     <h2 class="section-title">Мои тренировки</h2>
 
@@ -97,18 +98,9 @@
                     $dateLabel = $t->date ? \Carbon\Carbon::parse($t->date)->format('d.m.Y') : '—';
                     $timeLabel = $t->time ? \Carbon\Carbon::parse($t->time)->format('H:i') : '—';
 
-                    // цена:
-                    // - для тренера/админа показываем цену тренировки
-                    // - для пользователя можно показывать цену из trainings.price (или pivot.price если ты так хранишь)
                     $price = (int)($t->price ?? ($t->pivot->price ?? 0));
-
-                    // статус записи пользователя (если это bookedTrainings())
-                    $pivotStatus = $t->pivot->status ?? null; // active/cancelled/null
-
-                    // отменена ли сама тренировка админом
+                    $pivotStatus = $t->pivot->status ?? null;
                     $isCancelledTraining = !empty($t->is_cancelled);
-
-                    // отменена ли запись пользователя
                     $isCancelledBooking = ($user->isUser() && $pivotStatus && $pivotStatus !== 'active');
                 @endphp
 
@@ -127,7 +119,7 @@
                         <div>
                             <strong>Тренер:</strong>
                             @if($t->trainer)
-                                <a class="acc-link" href="{{ route('trainers.show', $t->trainer->id) }}">{{ $t->trainer->name }}</a>
+                                <a class="acc-link" href="{{ route('trainers.show', $t->trainer->id) }}">{{ $t->trainer->full_name }}</a>
                             @else
                                 <span class="acc-muted">Не назначен</span>
                             @endif
@@ -148,6 +140,7 @@
                     @elseif($isCancelledBooking)
                         <div class="muted">Запись отменена.</div>
                     @endif
+
                     @if(!$isCancelledTraining)
                         @if($user->isUser() && !$isCancelledBooking)
                             <form method="POST" action="{{ route('trainings.cancel', $t->id) }}">
@@ -155,6 +148,7 @@
                                 <button class="btn-card btn-card--danger" type="submit">Отменить запись</button>
                             </form>
                         @endif
+
                         @if($user->isTrainer() && (int)$t->trainer_id === (int)$user->id)
                             @if(!empty($t->has_pending_cancel))
                                 <div class="muted">Заявка на отмену отправлена</div>
@@ -172,6 +166,62 @@
                 </div>
             @endforeach
         </div>
+    @endif
+
+    @if($user->isUser())
+        <h2 class="section-title">Моя аренда кортов</h2>
+
+        @if(empty($courtBookings) || $courtBookings->isEmpty())
+            <div class="muted">У вас пока нет арендованных кортов.</div>
+        @else
+            <div class="account-list">
+                @foreach($courtBookings as $booking)
+                    @php
+                        $dateLabel = \Carbon\Carbon::parse($booking->date)->format('d.m.Y');
+                        $timeLabel = \Carbon\Carbon::parse($booking->time)->format('H:i');
+                        $groupKey = $booking->booking_group ?: $booking->id;
+                    @endphp
+
+                    <div class="account-training account-training--colored" style="background-color:#222;">
+                        <div class="acc-top">
+                            <div class="acc-type">Аренда корта</div>
+                            <div class="acc-dt">{{ $dateLabel }}      {{ $timeLabel }}</div>
+                        </div>
+
+                        <div class="acc-mini">
+                            <div><strong>Корт:</strong> {{ optional($booking->room)->name ?? '—' }}</div>
+                            <div><strong>Часов:</strong> {{ $booking->hours_count ?? 1 }}</div>
+                            <div><strong>Человек:</strong> {{ $booking->persons ?? 1 }}</div>
+                            <div><strong>Стоимость:</strong> {{ (int)($booking->total_price ?? $booking->price) }} ₽</div>
+                            <p><strong>Количество человек:</strong></p>
+                        </div>
+
+                        <form method="POST" action="{{ route('account.court-bookings.update-persons', $groupKey) }}">
+                            @csrf
+                            <div class="btn-row">
+            
+                                <div>
+                                    <input type="number"
+                                           class="input-mini"
+                                           name="persons"
+                                           min="1"
+                                           max="4"
+                                           value="{{ $booking->persons ?? 1 }}">
+                                </div>
+                                <div>
+                                    <button class="btn-card btn-card--warning" type="submit">изменить</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <form method="POST" action="{{ route('account.court-bookings.cancel', $groupKey) }}">
+                            @csrf
+                            <button class="btn-card btn-card--danger" type="submit">Отменить аренду</button>
+                        </form>
+                    </div>
+                @endforeach
+            </div>
+        @endif
     @endif
 </div>
 @endsection

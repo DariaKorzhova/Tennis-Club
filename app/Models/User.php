@@ -104,4 +104,9 @@ class User extends Authenticatable implements CanResetPasswordContract
     {
         return $this->hasMany(Training::class, 'trainer_id');
     }
+
+    public function courtBookings()
+    {
+        return $this->hasMany(CourtBooking::class, 'user_id');
+    }
 }

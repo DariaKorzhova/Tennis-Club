@@ -1000,8 +1000,8 @@ nav .menuList {
 .btn-card--danger {
     background: #c00;
     color: #ffffff;
-    border: 1px solid rgb(255, 255, 255);
     width: 100%;
+    margin-top: 10px;
 }
 
 .btn-card--warning {
@@ -1164,7 +1164,6 @@ nav .menuList {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
-    margin-top: 14px;
     align-items: start;
 }
 
@@ -1174,7 +1173,7 @@ nav .menuList {
 
 .btn-row .input-mini {
     width: 100%;
-    margin: 0 0 10px;
+    margin: 0px;
     padding: 11px 12px;
     border-radius: 12px;
     border: 2px solid rgba(0, 0, 0, 0.08);
@@ -1192,7 +1191,6 @@ nav .menuList {
     margin-top: 0;
     width: 100%;
     border-radius: 14px;
-    padding: 12px 14px;
 }
 
 /* =========================================================
@@ -2281,11 +2279,8 @@ nav .menuList {
 }
 
 .account-training.account-training--colored strong {
-    color: rgba(255, 255, 255, 0.92);
-}
-
-.account-training.account-training--colored .btn-card {
-    margin-top: 10px;
+    color: rgba(255, 255, 255, 0.65);
+    margin-right: 5px;
 }
 
 .acc-top {
@@ -2327,7 +2322,6 @@ nav .menuList {
 .acc-link {
     color: #fff;
     font-weight: 900;
-    text-decoration: underline;
 }
 
 .acc-link:hover {
@@ -2601,4 +2595,23 @@ nav .menuList {
     .home-h2--big {
         font-size: 64px;
     }
+}
+
+.court-slot {
+    width: 100%;
+    min-height: 42px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.court-slot--training {
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.court-slot--booked {
+    background: rgba(0, 0, 0, 0.28);
+}
+
+#courtBookingForm .field {
+    margin-top: 0;
 }

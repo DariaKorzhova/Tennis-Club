@@ -16,6 +16,7 @@
                 <a href="{{route('home')}}">главная</a>
                 <a href="{{route('rooms.show')}}">корты</a>
                 <a href="{{route('trainings.show')}}">тренировки</a>
+                <a href="{{ route('court-rent.index') }}">аренда кортов</a>
 
             @auth
                 @if(Auth::user()->role === 'admin')

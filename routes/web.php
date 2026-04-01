@@ -11,6 +11,7 @@ use App\Http\Controllers\TrainerController;
 use App\Http\Controllers\TrainerCancellationController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\CourtBookingController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -51,6 +52,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth'])->group(function () {
     Route::get('/account', [AccountController::class, 'index'])->name('account');
 
+    Route::get('/court-rent', [CourtBookingController::class, 'index'])->name('court-rent.index');
+    Route::post('/court-rent/book', [CourtBookingController::class, 'store'])->name('court-rent.store');
+
     Route::post('/trainings/{training}/book', [BookingController::class, 'book'])->name('trainings.book');
     Route::post('/trainings/{training}/cancel', [BookingController::class, 'cancel'])->name('trainings.cancel');
 
@@ -59,6 +63,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/account/edit', [AccountController::class, 'edit'])->name('account.edit');
     Route::post('/account/edit', [AccountController::class, 'update'])->name('account.update');
+
+    Route::post('/account/court-bookings/{group}/cancel', [AccountController::class, 'cancelCourtBooking'])
+    ->name('account.court-bookings.cancel');
+
+    Route::post('/account/court-bookings/{group}/persons', [AccountController::class, 'updateCourtBookingPersons'])
+    ->name('account.court-bookings.update-persons');
 
     Route::post('/account/password/send-code', [AccountController::class, 'sendPasswordCode'])->name('account.password.send-code');
     Route::post('/account/password/update', [AccountController::class, 'updatePassword'])->name('account.password.update');
