@@ -71,24 +71,36 @@
 
                             <td class="{{ $day['isToday'] ? 'is-today' : '' }}">
                                 @if($cell && $cell['status'] === 'free')
-                                    <button
-                                        type="button"
-                                        class="btn-card btn-card--success js-open-court-booking"
-                                        data-room-id="{{ $cell['room_id'] }}"
-                                        data-room-name="{{ $cell['room_name'] }}"
-                                        data-date="{{ $cell['date'] }}"
-                                        data-time="{{ $cell['time'] }}"
-                                        data-price-hour="{{ $pricePerHour }}"
-                                    >
-                                        Записаться
-                                    </button>
-                                @elseif($cell && $cell['status'] === 'booked')
-                                    <div class="court-slot court-slot--booked"></div>
-                                @elseif($cell && $cell['status'] === 'training')
-                                    <div class="court-slot court-slot--training"></div>
-                                @else
-                                    <div class="court-slot"></div>
-                                @endif
+    <button
+        type="button"
+        class="btn-card btn-card--success js-open-court-booking"
+        data-room-id="{{ $cell['room_id'] }}"
+        data-room-name="{{ $cell['room_name'] }}"
+        data-date="{{ $cell['date'] }}"
+        data-time="{{ $cell['time'] }}"
+        data-price-hour="{{ $pricePerHour }}"
+    >
+        Записаться
+    </button>
+@elseif($cell && $cell['status'] === 'booked')
+    <div class="court-slot court-slot--booked"></div>
+@elseif($cell && $cell['status'] === 'my_training')
+    <div class="court-slot court-slot--my-training">
+        <span class="court-slot__label">
+            {{ $cell['type_label'] ?? 'Тренировка' }}
+        </span>
+
+        @if(!empty($cell['training_room_name']))
+            <span class="court-slot__sub">
+                {{ $cell['training_room_name'] }}
+            </span>
+        @endif
+    </div>
+@elseif($cell && $cell['status'] === 'training')
+    <div class="court-slot court-slot--training"></div>
+@else
+    <div class="court-slot"></div>
+@endif
                             </td>
                         @endforeach
                     </tr>

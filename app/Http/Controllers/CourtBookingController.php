@@ -33,7 +33,8 @@ class CourtBookingController extends Controller
         $endDate = $startDate->copy()->addDays(6)->endOfDay();
 
         $bookings = collect();
-        $trainings = collect();
+        $courtTrainings = collect();
+        $myTrainings = collect();
 
         if ($selectedCourt) {
             $bookings = CourtBooking::with(['room', 'user'])
@@ -45,7 +46,8 @@ class CourtBookingController extends Controller
                 ])
                 ->get();
 
-            $trainings = Training::with(['rooms', 'trainer'])
+            // Тренировки, которые реально проходят на выбранном корте
+            $courtTrainings = Training::with(['rooms', 'trainer', 'users'])
                 ->whereBetween('date', [
                     $startDate->format('Y-m-d'),
                     $endDate->format('Y-m-d'),
@@ -56,10 +58,23 @@ class CourtBookingController extends Controller
                 ->get();
         }
 
+        // ВСЕ мои тренировки за период, независимо от помещения
+        if (Auth::check()) {
+            $myTrainings = Auth::user()->bookedTrainings()
+                ->wherePivot('status', 'active')
+                ->with(['rooms', 'trainer'])
+                ->whereBetween('date', [
+                    $startDate->format('Y-m-d'),
+                    $endDate->format('Y-m-d'),
+                ])
+                ->get();
+        }
+
         $calendarData = $this->prepareCalendarData(
             $selectedCourt,
             $bookings,
-            $trainings,
+            $courtTrainings,
+            $myTrainings,
             $startDate
         );
 
@@ -121,6 +136,7 @@ class CourtBookingController extends Controller
 
         $pricePerHour = 2000;
         $totalPrice = $pricePerHour * $hours;
+        $group = uniqid('court_', true);
 
         foreach ($timeSlots as $slot) {
             CourtBooking::create([
@@ -128,20 +144,30 @@ class CourtBookingController extends Controller
                 'user_id' => Auth::id(),
                 'date' => $date,
                 'time' => $slot,
-                'duration' => '1 час',
+                'duration' => $hours === 2 ? '2 часа' : '1 час',
                 'price' => $pricePerHour,
                 'status' => 'active',
                 'persons' => $persons,
-                'booking_group' => uniqid('court_', true),
+                'booking_group' => $group,
             ]);
         }
 
         return back()->with('success', 'Корт успешно забронирован. Итоговая стоимость: ' . $totalPrice . ' ₽');
     }
 
-    private function prepareCalendarData($court, $bookings, $trainings, Carbon $startDate)
+    private function prepareCalendarData($court, $bookings, $courtTrainings, $myTrainings, Carbon $startDate)
     {
         $today = Carbon::today();
+
+        $typeNames = [
+            'individual' => 'Индивидуальная',
+            'split' => 'Сплит',
+            'kids' => 'Детская',
+            'group' => 'Групповая',
+            'fitness' => 'Фитнес',
+            'yoga' => 'Йога',
+            'massage' => 'Массаж',
+        ];
 
         $dayNames = [
             1 => 'ПН',
@@ -184,7 +210,8 @@ class CourtBookingController extends Controller
             }
         }
 
-        foreach ($trainings as $training) {
+        // 1. Сначала отмечаем тренировки, которые проходят именно на выбранном корте
+        foreach ($courtTrainings as $training) {
             $time = Carbon::parse($training->time)->format('H:00');
 
             if (isset($grid[$training->date][$time])) {
@@ -194,10 +221,37 @@ class CourtBookingController extends Controller
                     'room_name' => $court ? $court->name : '',
                     'date' => $training->date,
                     'time' => $time,
+                    'training_id' => $training->id,
+                    'trainer_name' => $training->trainer ? $training->trainer->full_name : 'Не назначен',
+                    'type_name' => $training->type,
+                    'type_label' => $typeNames[$training->type] ?? $training->type,
                 ];
             }
         }
 
+        // 2. Потом поверх отмечаем ВСЕ мои тренировки, даже если они проходят не на этом корте
+        foreach ($myTrainings as $training) {
+            $time = Carbon::parse($training->time)->format('H:00');
+
+            if (isset($grid[$training->date][$time])) {
+                $room = $training->rooms->first();
+
+                $grid[$training->date][$time] = [
+                    'status' => 'my_training',
+                    'room_id' => $court ? $court->id : null,
+                    'room_name' => $court ? $court->name : '',
+                    'date' => $training->date,
+                    'time' => $time,
+                    'training_id' => $training->id,
+                    'trainer_name' => $training->trainer ? $training->trainer->full_name : 'Не назначен',
+                    'type_name' => $training->type,
+                    'type_label' => $typeNames[$training->type] ?? $training->type,
+                    'training_room_name' => $room ? $room->name : 'Другое помещение',
+                ];
+            }
+        }
+
+        // 3. Потом брони корта
         foreach ($bookings as $booking) {
             $time = Carbon::parse($booking->time)->format('H:00');
 

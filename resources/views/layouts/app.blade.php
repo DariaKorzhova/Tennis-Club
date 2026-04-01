@@ -27,7 +27,6 @@
                     <a href="{{ route('account') }}">мой аккаунт</a>
                 @endif
 
-
                 @if(in_array(Auth::user()->role, ['admin', 'trainer']))
                     <div class="user-info">
                         <span class="user-role-badge {{ Auth::user()->role }}">
@@ -77,9 +76,7 @@
         </div>
     </main>
 
-    <footer>
-        {{-- Футер можно оставить пустым или добавить контент позже --}}
-    </footer>
+    <footer></footer>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -90,7 +87,7 @@
                 alert.classList.add('hiding');
                 setTimeout(() => {
                     alert.remove();
-                    if (alertsContainer.children.length === 0) {
+                    if (alertsContainer && alertsContainer.children.length === 0) {
                         alertsContainer.style.display = 'none';
                     }
                 }, 300);
@@ -115,6 +112,15 @@
                 alert.addEventListener('click', function(e) {
                     if (!e.target.classList.contains('alert-close')) {
                         closeAlert(this);
+                    }
+                });
+            });
+
+            document.querySelectorAll('form[data-confirm]').forEach(function(form) {
+                form.addEventListener('submit', function(e) {
+                    const message = form.getAttribute('data-confirm') || 'Подтвердить действие?';
+                    if (!window.confirm(message)) {
+                        e.preventDefault();
                     }
                 });
             });

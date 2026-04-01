@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Training;
 use App\Models\Room;
+use App\Models\User;
 use App\Models\CancellationRequest;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -14,60 +15,57 @@ class TrainingController extends Controller
     public function showTraining(Request $request)
     {
         $dayOffset = (int) $request->input('week', 0);
-        if ($dayOffset < 0) {
-            $dayOffset = 0;
-        }
-        if ($dayOffset > 3) {
-            $dayOffset = 3;
-        }
+        if ($dayOffset < 0) $dayOffset = 0;
+        if ($dayOffset > 3) $dayOffset = 3;
 
         $selectedType = $request->input('type', 'all');
         $selectedRoom = $request->input('room', 'all');
+        $selectedTrainer = (string) $request->input('trainer', 'all');
 
-        // Календарь строится относительно сегодняшней даты:
-        // 0 => сегодня + 6 дней, 1 => с 7-го по 13-й день и т.д.
         $startDate = Carbon::today()->addDays($dayOffset * 7)->startOfDay();
         $endDate = $startDate->copy()->addDays(6)->endOfDay();
 
-        $query = Training::with(['rooms', 'trainer'])
+        $authUser = Auth::user();
+        $authId = Auth::id();
+
+        $trainings = Training::with(['rooms', 'trainer', 'users'])
             ->whereBetween('date', [
                 $startDate->format('Y-m-d'),
                 $endDate->format('Y-m-d'),
-            ]);
-
-        if ($selectedType !== 'all') {
-            $query->where('type', $selectedType);
-        }
-
-        if ($selectedRoom !== 'all') {
-            $query->whereHas('rooms', function ($q) use ($selectedRoom) {
-                $q->where('name', $selectedRoom);
-            });
-        }
-
-        $trainings = $query
+            ])
             ->orderBy('date', 'asc')
             ->orderBy('time', 'asc')
             ->get();
 
-        $calendarData = $this->prepareCalendarData($trainings, $startDate);
+        $calendarData = $this->prepareCalendarData(
+            $trainings,
+            $startDate,
+            $selectedType,
+            $selectedRoom,
+            $selectedTrainer,
+            $authUser,
+            $authId
+        );
 
         $types = $this->getTypes();
         $rooms = $this->getRooms();
+        $trainers = $this->getTrainers();
         $typeColors = $this->getTypeColors();
 
         return view('trainings.trainings', compact(
             'calendarData',
             'types',
             'rooms',
+            'trainers',
             'selectedType',
             'selectedRoom',
+            'selectedTrainer',
             'typeColors',
             'dayOffset'
         ));
     }
 
-    private function prepareCalendarData($trainings, Carbon $startDate)
+    private function prepareCalendarData($trainings, Carbon $startDate, $selectedType, $selectedRoom, $selectedTrainer, $authUser, $authId)
     {
         $today = Carbon::today();
         $dayNames = [
@@ -105,9 +103,6 @@ class TrainingController extends Controller
         $types = $this->getTypes();
         $typeColors = $this->getTypeColors();
 
-        $authUser = Auth::user();
-        $authId = Auth::id();
-
         foreach ($trainings as $training) {
             $trainingDate = Carbon::parse($training->date)->startOfDay();
             $dayIndex = $startDate->copy()->startOfDay()->diffInDays($trainingDate, false);
@@ -116,9 +111,6 @@ class TrainingController extends Controller
                 continue;
             }
 
-            $timeSlot = Carbon::parse($training->time)->format('H:00');
-            $color = $typeColors[$training->type] ?? '#777777';
-
             $room = $training->rooms->first();
             $roomName = $room ? $room->name : 'Не указано';
             $roomId = $room ? $room->id : null;
@@ -126,17 +118,49 @@ class TrainingController extends Controller
             $trainerName = $training->trainer ? $training->trainer->full_name : 'Не назначен';
             $trainerId = $training->trainer ? $training->trainer->id : null;
 
+            $isBookedByMe = false;
+            $hasOtherTrainingAtSameTime = false;
+
+            if ($authUser && $authUser->isUser()) {
+                foreach ($training->users as $u) {
+                    if ((int) $u->id === (int) $authId && $u->pivot && $u->pivot->status === 'active') {
+                        $isBookedByMe = true;
+                        break;
+                    }
+                }
+
+                $hasOtherTrainingAtSameTime = $authUser->bookedTrainings()
+                    ->wherePivot('status', 'active')
+                    ->where('date', $training->date)
+                    ->where('time', $training->time)
+                    ->where('trainings.id', '!=', $training->id)
+                    ->exists();
+            }
+
+            $matchesFilters = true;
+
+            if ($selectedType !== 'all' && $training->type !== $selectedType) {
+                $matchesFilters = false;
+            }
+
+            if ($selectedRoom !== 'all' && $roomName !== $selectedRoom) {
+                $matchesFilters = false;
+            }
+
+            if ($selectedTrainer !== 'all' && (string) $trainerId !== (string) $selectedTrainer) {
+                $matchesFilters = false;
+            }
+
+            if (!$matchesFilters && !$isBookedByMe) {
+                continue;
+            }
+
+            $timeSlot = Carbon::parse($training->time)->format('H:00');
+            $color = $typeColors[$training->type] ?? '#777777';
+
             $bookedCount = $training->users()->wherePivot('status', 'active')->count();
             $totalSeats = (int) ($training->persons ?? 0);
             $freeSeats = max(0, $totalSeats - $bookedCount);
-
-            $isBookedByMe = false;
-            if ($authUser && $authUser->isUser()) {
-                $pivotUser = $training->users()->where('users.id', $authId)->first();
-                if ($pivotUser && $pivotUser->pivot && $pivotUser->pivot->status === 'active') {
-                    $isBookedByMe = true;
-                }
-            }
 
             $hasPendingCancel = false;
             if ($authUser && $authUser->isTrainer() && (int) $training->trainer_id === (int) $authId) {
@@ -172,6 +196,7 @@ class TrainingController extends Controller
                 'is_cancelled' => (bool) $training->is_cancelled,
                 'is_booked_by_me' => $isBookedByMe,
                 'has_pending_cancel' => $hasPendingCancel,
+                'has_other_training_at_same_time' => $hasOtherTrainingAtSameTime,
 
                 'book_url' => route('trainings.book', $training->id),
                 'cancel_url' => route('trainings.cancel', $training->id),
@@ -212,6 +237,22 @@ class TrainingController extends Controller
             $roomList[$room->name] = $room->name;
         }
         return $roomList;
+    }
+
+    private function getTrainers()
+    {
+        $trainers = User::where('role', 'trainer')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        $trainerList = ['all' => 'Все тренеры'];
+
+        foreach ($trainers as $trainer) {
+            $trainerList[$trainer->id] = $trainer->full_name;
+        }
+
+        return $trainerList;
     }
 
     private function getTypeColors()

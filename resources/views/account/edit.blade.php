@@ -4,161 +4,168 @@
 
 @section('content')
 <div class="container">
-    <div class="account-edit-shell">
-        <div class="account-edit-card">
-            <h2 class="account-edit-title">Редактирование аккаунта</h2>
+    <div class="account-layout-edit">
 
-            @if(session('status'))
-                <div class="auth-notification success">{{ session('status') }}</div>
-            @endif
+        <div class="account-content">
+            <div class="account-edit-shell">
+                <a href="{{ route('account') }}" class="account-back-btn">← Назад</a>
+                <div class="account-edit-card">
+                    
+                    <h2 class="account-edit-title">Редактирование аккаунта</h2>
 
-            @if($errors->any())
-                <div class="auth-notification error">
-                    <ul style="margin:0; padding-left:20px;">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+                    @if(session('status'))
+                        <div class="auth-notification success">{{ session('status') }}</div>
+                    @endif
 
-            <form method="POST" action="{{ route('account.update') }}" enctype="multipart/form-data" class="account-edit-form">
-                @csrf
-
-                <div class="account-edit-grid">
-                    <div class="form-group">
-                        <label class="form-label" for="first_name">Имя</label>
-                        <input
-                            type="text"
-                            class="form-input"
-                            id="first_name"
-                            name="first_name"
-                            value="{{ old('first_name', $user->first_name) }}"
-                            required
-                        >
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="last_name">Фамилия</label>
-                        <input
-                            type="text"
-                            class="form-input"
-                            id="last_name"
-                            name="last_name"
-                            value="{{ old('last_name', $user->last_name) }}"
-                            required
-                        >
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="birth_date">Дата рождения</label>
-                    <input
-                        type="date"
-                        class="form-input"
-                        id="birth_date"
-                        name="birth_date"
-                        value="{{ old('birth_date', $user->birth_date ? $user->birth_date->format('Y-m-d') : '') }}"
-                        max="{{ now()->subDay()->format('Y-m-d') }}"
-                        required
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="photo">Фото профиля</label>
-                    <input
-                        type="file"
-                        class="form-input"
-                        id="photo"
-                        name="photo"
-                        accept=".jpg,.jpeg,.png,.webp"
-                    >
-                </div>
-
-                <input type="hidden" name="crop_x" id="crop_x" value="0">
-                <input type="hidden" name="crop_y" id="crop_y" value="0">
-                <input type="hidden" name="crop_size" id="crop_size" value="0">
-
-                <div class="form-group" id="cropSection" style="display:none;">
-                    <label class="form-label">Выберите видимую квадратную область</label>
-
-                    <div style="position:relative; width:420px; max-width:100%; border:1px solid #ddd; overflow:hidden;" id="cropWrap">
-                        <img id="cropPreview" src="" alt="Предпросмотр" style="display:block; max-width:100%; width:100%;">
-                        <div id="cropBox"
-                             style="position:absolute; border:2px solid #DFFF4F; box-shadow:0 0 0 9999px rgba(0,0,0,.35); cursor:move; width:180px; height:180px; left:40px; top:40px;">
+                    @if($errors->any())
+                        <div class="auth-notification error">
+                            <ul style="margin:0; padding-left:20px;">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
                         </div>
-                    </div>
+                    @endif
 
-                    <div style="margin-top:10px; color:#666;">
-                        Перетащи квадрат мышкой. Будет сохранена видимая часть фото.
-                    </div>
+                    <form method="POST" action="{{ route('account.update') }}" enctype="multipart/form-data" class="account-edit-form">
+                        @csrf
+
+                        <div class="account-edit-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="first_name">Имя</label>
+                                <input
+                                    type="text"
+                                    class="form-input"
+                                    id="first_name"
+                                    name="first_name"
+                                    value="{{ old('first_name', $user->first_name) }}"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="last_name">Фамилия</label>
+                                <input
+                                    type="text"
+                                    class="form-input"
+                                    id="last_name"
+                                    name="last_name"
+                                    value="{{ old('last_name', $user->last_name) }}"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="birth_date">Дата рождения</label>
+                            <input
+                                type="date"
+                                class="form-input"
+                                id="birth_date"
+                                name="birth_date"
+                                value="{{ old('birth_date', $user->birth_date ? $user->birth_date->format('Y-m-d') : '') }}"
+                                max="{{ now()->subDay()->format('Y-m-d') }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="photo">Фото профиля</label>
+                            <input
+                                type="file"
+                                class="form-input"
+                                id="photo"
+                                name="photo"
+                                accept=".jpg,.jpeg,.png,.webp"
+                            >
+                        </div>
+
+                        <input type="hidden" name="crop_x" id="crop_x" value="0">
+                        <input type="hidden" name="crop_y" id="crop_y" value="0">
+                        <input type="hidden" name="crop_size" id="crop_size" value="0">
+
+                        <div class="form-group" id="cropSection" style="display:none;">
+                            <label class="form-label">Выберите видимую квадратную область</label>
+
+                            <div style="position:relative; width:420px; max-width:100%; border:1px solid #ddd; overflow:hidden;" id="cropWrap">
+                                <img id="cropPreview" src="" alt="Предпросмотр" style="display:block; max-width:100%; width:100%;">
+                                <div id="cropBox"
+                                     style="position:absolute; border:2px solid #DFFF4F; box-shadow:0 0 0 9999px rgba(0,0,0,.35); cursor:move; width:180px; height:180px; left:40px; top:40px;">
+                                </div>
+                            </div>
+
+                            <div style="margin-top:10px; color:#666;">
+                                Перетащи квадрат мышкой. Будет сохранена видимая часть фото.
+                            </div>
+                        </div>
+
+                        <div class="account-edit-buttons">
+                            <button type="submit" class="form-button">Сохранить изменения</button>
+                            <a href="{{ route('account') }}" class="account-secondary-btn">Назад</a>
+                        </div>
+                    </form>
                 </div>
 
-                <div class="account-edit-buttons">
-                    <button type="submit" class="form-button">Сохранить изменения</button>
-                    <a href="{{ route('account') }}" class="account-secondary-btn">Назад</a>
+                <div class="account-edit-card">
+                    <h3 class="account-edit-subtitle">Смена пароля</h3>
+                    <p class="account-edit-hint">Сначала введите новый пароль, затем получите код подтверждения на почту и подтвердите смену.</p>
+
+                    <form method="POST" action="{{ route('account.password.send-code') }}" class="account-password-form">
+                        @csrf
+
+                        <div class="form-group">
+                            <label class="form-label" for="new_password">Новый пароль</label>
+                            <input
+                                type="password"
+                                class="form-input password-sync"
+                                id="new_password"
+                                name="new_password"
+                                minlength="8"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="new_password_confirmation">Подтвердите новый пароль</label>
+                            <input
+                                type="password"
+                                class="form-input password-sync"
+                                id="new_password_confirmation"
+                                name="new_password_confirmation"
+                                minlength="8"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-checkbox">
+                            <input type="checkbox" class="checkbox-input" id="show_passwords">
+                            <label class="checkbox-label" for="show_passwords">Показать пароль</label>
+                        </div>
+
+                        <button type="submit" class="form-button">Отправить код на почту</button>
+                    </form>
+
+                    <form method="POST" action="{{ route('account.password.update') }}" class="account-password-confirm-form">
+                        @csrf
+
+                        <div class="form-group">
+                            <label class="form-label" for="code">Код подтверждения</label>
+                            <input
+                                type="text"
+                                class="form-input"
+                                id="code"
+                                name="code"
+                                maxlength="6"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                required
+                            >
+                        </div>
+
+                        <button type="submit" class="form-button">Подтвердить смену пароля</button>
+                    </form>
                 </div>
-            </form>
-        </div>
-
-        <div class="account-edit-card">
-            <h3 class="account-edit-subtitle">Смена пароля</h3>
-            <p class="account-edit-hint">Сначала введите новый пароль, затем получите код подтверждения на почту и подтвердите смену.</p>
-
-            <form method="POST" action="{{ route('account.password.send-code') }}" class="account-password-form">
-                @csrf
-
-                <div class="form-group">
-                    <label class="form-label" for="new_password">Новый пароль</label>
-                    <input
-                        type="password"
-                        class="form-input password-sync"
-                        id="new_password"
-                        name="new_password"
-                        minlength="8"
-                        required
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="new_password_confirmation">Подтвердите новый пароль</label>
-                    <input
-                        type="password"
-                        class="form-input password-sync"
-                        id="new_password_confirmation"
-                        name="new_password_confirmation"
-                        minlength="8"
-                        required
-                    >
-                </div>
-
-                <div class="form-checkbox">
-                    <input type="checkbox" class="checkbox-input" id="show_passwords">
-                    <label class="checkbox-label" for="show_passwords">Показать пароль</label>
-                </div>
-
-                <button type="submit" class="form-button">Отправить код на почту</button>
-            </form>
-
-            <form method="POST" action="{{ route('account.password.update') }}" class="account-password-confirm-form">
-                @csrf
-
-                <div class="form-group">
-                    <label class="form-label" for="code">Код подтверждения</label>
-                    <input
-                        type="text"
-                        class="form-input"
-                        id="code"
-                        name="code"
-                        maxlength="6"
-                        inputmode="numeric"
-                        autocomplete="one-time-code"
-                        required
-                    >
-                </div>
-
-                <button type="submit" class="form-button">Подтвердить смену пароля</button>
-            </form>
+            </div>
         </div>
     </div>
 </div>

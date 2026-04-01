@@ -40,6 +40,13 @@
                 @endforeach
             </select>
 
+            <label class="form-label" for="trainer">Тренер:</label>
+            <select name="trainer" id="trainer" class="form-select" onchange="this.form.submit()">
+                @foreach($trainers as $key => $name)
+                    <option value="{{ $key }}" {{ (string)$selectedTrainer === (string)$key ? 'selected' : '' }}>{{ $name }}</option>
+                @endforeach
+            </select>
+
             <a href="{{ route('trainings.show', ['week' => $currentOffset]) }}" class="btn-secondary">Сбросить</a>
         </form>
 
@@ -54,7 +61,7 @@
     <div class="calendar-wrap">
         @if(!$prevDisabled)
             <a class="calendar-arrow calendar-arrow--left"
-               href="{{ route('trainings.show', ['week'=>$prevOffset,'type'=>$selectedType,'room'=>$selectedRoom]) }}"
+               href="{{ route('trainings.show', ['week'=>$prevOffset,'type'=>$selectedType,'room'=>$selectedRoom,'trainer'=>$selectedTrainer]) }}"
                aria-label="Предыдущие 7 дней">‹</a>
         @else
             <span class="calendar-arrow calendar-arrow--left is-disabled" aria-disabled="true">‹</span>
@@ -94,16 +101,24 @@
                                             @foreach($day['trainings'][$time] as $t)
                                                 @php
                                                     $bg = !empty($t['is_full']) ? '#BDBDBD' : ($t['color'] ?? '#777777');
+                                                    if (!empty($t['is_booked_by_me'])) {
+                                                        $bg = '#111111';
+                                                    }
                                                 @endphp
 
                                                 <button
                                                     type="button"
-                                                    class="training training--compact js-open-training {{ !empty($t['is_full']) ? 'training--full' : '' }}"
+                                                    class="training training--compact js-open-training {{ !empty($t['is_full']) ? 'training--full' : '' }} {{ !empty($t['is_booked_by_me']) ? 'training--mine' : '' }}"
                                                     style="background-color: {{ $bg }};"
                                                     data-training='@json($t)'
                                                 >
                                                     <div class="training-compact__top">
-                                                        <div class="training-type">{{ $t['type_name'] }}</div>
+                                                        <div class="training-type">
+                                                            <p>{{ $t['type_name'] }}</p> 
+                                                            @if(!empty($t['is_booked_by_me']))
+                                                                <span class="training-booked-mark">вы записаны</span>
+                                                            @endif
+                                                        </div>
                                                         <div class="training-duration">{{ $t['duration'] }}</div>
                                                     </div>
                                                     <div class="training-compact__price">{{ (int)$t['price'] }} ₽ / чел</div>
@@ -138,7 +153,7 @@
 
         @if(!$nextDisabled)
             <a class="calendar-arrow calendar-arrow--right"
-               href="{{ route('trainings.show', ['week'=>$nextOffset,'type'=>$selectedType,'room'=>$selectedRoom]) }}"
+               href="{{ route('trainings.show', ['week'=>$nextOffset,'type'=>$selectedType,'room'=>$selectedRoom,'trainer'=>$selectedTrainer]) }}"
                aria-label="Следующие 7 дней">›</a>
         @else
             <span class="calendar-arrow calendar-arrow--right is-disabled" aria-disabled="true">›</span>
@@ -174,7 +189,7 @@
                         <button type="submit" class="btn-card btn-card--success">Записаться</button>
                     </form>
 
-                    <form method="POST" action="#" id="formCancel" class="is-hidden">
+                    <form method="POST" action="#" id="formCancel" class="is-hidden" data-confirm="Отменить запись на тренировку?">
                         @csrf
                         <button type="submit" class="btn-card btn-card--danger">Отменить запись</button>
                     </form>
@@ -211,21 +226,22 @@
     var formCancel = document.getElementById('formCancel');
     var formReq = document.getElementById('formTrainerRequest');
     var info = document.getElementById('modalInfo');
-function openModal() {
-    modal.classList.remove('is-hidden');
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('no-scroll');
 
-    const dialog = modal.querySelector('.modal__dialog');
-    if (dialog) {
-        dialog.scrollTop = 0;
+    function openModal() {
+        modal.classList.remove('is-hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('no-scroll');
+
+        const dialog = modal.querySelector('.modal__dialog');
+        if (dialog) {
+            dialog.scrollTop = 0;
+        }
+
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
     }
-
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
-}
 
     function closeModal() {
         modal.classList.add('is-hidden');
@@ -281,12 +297,19 @@ function openModal() {
                     info.classList.remove('is-hidden');
                     info.textContent = 'Тренировка отменена.';
                 }
-            } else {
-                if (t.is_booked_by_me) {
-                    formCancel.classList.remove('is-hidden');
-                } else if (parseInt(t.free_seats || 0, 10) > 0) {
-                    formBook.classList.remove('is-hidden');
+            } else if (t.is_booked_by_me) {
+                formCancel.classList.remove('is-hidden');
+                if (info) {
+                    info.classList.remove('is-hidden');
+                    info.textContent = 'Вы уже записаны на эту тренировку.';
                 }
+            } else if (t.has_other_training_at_same_time) {
+                if (info) {
+                    info.classList.remove('is-hidden');
+                    info.textContent = 'У вас уже есть запись на другое занятие в это же время.';
+                }
+            } else if (parseInt(t.free_seats || 0, 10) > 0) {
+                formBook.classList.remove('is-hidden');
             }
 
             if (formReq) {
@@ -300,273 +323,4 @@ function openModal() {
     });
 })();
 </script>
-
-@if($isAdmin)
-{{-- ADMIN ADD MODAL --}}
-<div class="modal is-hidden" id="adminAddModal" aria-hidden="true">
-    <div class="modal__overlay" data-close-admin="1"></div>
-
-    <div class="modal__dialog modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="adminAddTitle">
-        <button class="modal__close" type="button" data-close-admin="1">×</button>
-
-        <div class="modal__header">
-            <div class="modal__title" id="adminAddTitle">Добавить тренировку</div>
-            <div class="modal__subtitle muted" id="adminAddSub">Выберите параметры и сохраните</div>
-        </div>
-
-        <div class="modal__body">
-            <form method="POST" action="{{ route('admin.trainings.store') }}" class="admin-form" id="adminAddForm">
-                @csrf
-
-                <div class="admin-grid">
-                    <div class="field">
-                        <label class="lbl">Дата</label>
-                        <input class="inp inp-date" type="date" name="date" id="aaDate" required>
-                    </div>
-
-                    <div class="field">
-                        <label class="lbl">Время</label>
-                        <select class="inp" name="time" id="aaTime" required></select>
-                    </div>
-
-                    <div class="field">
-                        <label class="lbl">Тип тренировки</label>
-                        <select class="inp" name="type" id="aaType" required>
-                            <option value="individual">Индивидуальная</option>
-                            <option value="split">Сплит</option>
-                            <option value="kids">Детская</option>
-                            <option value="group">Групповая</option>
-                            <option value="fitness">Фитнес</option>
-                            <option value="yoga">Йога</option>
-                            <option value="massage">Массаж</option>
-                        </select>
-                    </div>
-
-                    <div class="field">
-                        <label class="lbl">Длительность</label>
-                        <select class="inp" name="duration" id="aaDuration" required>
-                            <option value="1 час">1 час</option>
-                            <option value="1.5 часа">1.5 часа</option>
-                            <option value="2 часа">2 часа</option>
-                        </select>
-                    </div>
-
-                    <div class="field">
-                        <label class="lbl">Помещение</label>
-                        <select class="inp" name="room_id" id="aaRoom" required></select>
-                    </div>
-
-                    <div class="field">
-                        <label class="lbl">Тренер (обязательно)</label>
-                        <select class="inp" name="trainer_id" id="aaTrainer" required></select>
-                    </div>
-
-                    <div class="field">
-                        <label class="lbl">Кол-во мест</label>
-                        <input class="inp" type="number" name="persons" id="aaPersons" min="1" max="200" required value="6">
-                    </div>
-
-                    <div class="field">
-                        <label class="lbl">Цена за 1 человека (минимум 1000)</label>
-                        <input class="inp" type="number" name="price" id="aaPrice" min="1000" step="50" required value="1000">
-                    </div>
-                </div>
-
-                <div class="admin-actions">
-                    <button class="btn-save" type="submit">Сохранить</button>
-                    <button class="btn-cancel" type="button" data-close-admin="1">Отмена</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-(function () {
-    var modal = document.getElementById('adminAddModal');
-    var btns = document.querySelectorAll('.js-open-admin-add');
-    if (!modal || !btns.length) return;
-
-    var dateEl = document.getElementById('aaDate');
-    var timeEl = document.getElementById('aaTime');
-    var typeEl = document.getElementById('aaType');
-    var durationEl = document.getElementById('aaDuration');
-    var roomEl = document.getElementById('aaRoom');
-    var trainerEl = document.getElementById('aaTrainer');
-    var personsEl = document.getElementById('aaPersons');
-    var personsHint = document.getElementById('aaPersonsHint');
-
-    var availabilityUrl = "{{ route('admin.trainings.availability') }}";
-
-    function show() {
-        modal.classList.remove('is-hidden');
-        document.body.classList.add('no-scroll');
-    }
-    function hide() {
-        modal.classList.add('is-hidden');
-        document.body.classList.remove('no-scroll');
-    }
-
-    function setOptions(select, items, currentValue) {
-        select.innerHTML = '';
-        items.forEach(function (it) {
-            var opt = document.createElement('option');
-            opt.value = String(it.value);
-            opt.textContent = it.label;
-            select.appendChild(opt);
-        });
-
-        if (currentValue) {
-            var exists = Array.from(select.options).some(function (o) { return o.value === String(currentValue); });
-            if (exists) select.value = String(currentValue);
-        }
-    }
-
-    function setRooms(rooms, currentId) {
-        var items = rooms.map(function (r) {
-            return { value: r.id, label: r.name };
-        });
-
-        if (!items.length) {
-            items = [{ value: '', label: 'Нет доступных помещений' }];
-            roomEl.disabled = true;
-        } else {
-            roomEl.disabled = false;
-        }
-
-        setOptions(roomEl, items, currentId);
-    }
-
-    function setTrainers(trainers, currentId) {
-        var items = trainers.map(function (t) {
-            return { value: t.id, label: t.name + ' (' + (t.specialization_name || t.specialization || '') + ')' };
-        });
-
-        if (!items.length) {
-            items = [{ value: '', label: 'Нет доступных тренеров' }];
-            trainerEl.disabled = true;
-        } else {
-            trainerEl.disabled = false;
-        }
-
-        setOptions(trainerEl, items, currentId);
-    }
-
-    function setTimes(times, currentTime) {
-        var items = times.map(function (t) { return { value: t, label: t }; });
-
-        if (!items.length) {
-            items = [{ value: currentTime || '08:00', label: (currentTime || '08:00') + ' (занято)' }];
-            timeEl.disabled = true;
-        } else {
-            timeEl.disabled = false;
-        }
-
-        setOptions(timeEl, items, currentTime);
-    }
-
-    function applyPersonsRules(rules) {
-        if (!rules) return;
-
-        personsEl.removeAttribute('readonly');
-        personsEl.classList.remove('is-locked');
-
-        personsEl.min = rules.min;
-        personsEl.max = rules.max;
-
-        if (rules.fixed !== null && rules.fixed !== undefined) {
-            personsEl.value = rules.fixed;
-            personsEl.setAttribute('readonly', 'readonly');
-            personsEl.classList.add('is-locked');
-            personsHint.textContent = 'Для выбранного типа количество мест фиксировано: ' + rules.fixed;
-        } else {
-            if (!personsEl.value) personsEl.value = rules.min;
-            if (parseInt(personsEl.value, 10) < parseInt(rules.min, 10)) personsEl.value = rules.min;
-            if (parseInt(personsEl.value, 10) > parseInt(rules.max, 10)) personsEl.value = rules.max;
-            personsHint.textContent = 'Допустимо мест: от ' + rules.min + ' до ' + rules.max;
-        }
-    }
-
-    var lastReq = 0;
-    function refresh() {
-        if (!dateEl.value) return;
-
-        var q = new URLSearchParams();
-        q.set('date', dateEl.value);
-        q.set('type', typeEl.value);
-
-        if (timeEl.value) q.set('time', timeEl.value);
-        if (roomEl.value) q.set('room_id', roomEl.value);
-        if (trainerEl.value) q.set('trainer_id', trainerEl.value);
-
-        var myReq = ++lastReq;
-
-        fetch(availabilityUrl + '?' + q.toString(), { headers: { 'Accept': 'application/json' } })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (myReq !== lastReq) return;
-                if (!data || !data.ok) return;
-
-                var keepRoom = roomEl.value;
-                var keepTrainer = trainerEl.value;
-                var keepTime = timeEl.value;
-
-                setRooms(data.rooms || [], keepRoom);
-                setTrainers(data.trainers || [], keepTrainer);
-                setTimes(data.timeOptions || [], keepTime);
-
-                applyPersonsRules(data.persons);
-
-                if (roomEl.disabled) roomEl.value = '';
-                if (trainerEl.disabled) trainerEl.value = '';
-            })
-            .catch(function () {});
-    }
-
-    btns.forEach(function (b) {
-        b.addEventListener('click', function () {
-            var d = b.getAttribute('data-date');
-            var t = b.getAttribute('data-time');
-
-            dateEl.value = d || '';
-
-            var tVal = (t || '08:00').trim();
-            if (tVal.length === 4) tVal = '0' + tVal;
-
-            timeEl.innerHTML = '<option value="' + tVal + '">' + tVal + '</option>';
-            timeEl.value = tVal;
-
-            roomEl.innerHTML = '';
-            trainerEl.innerHTML = '';
-            roomEl.disabled = false;
-            trainerEl.disabled = false;
-
-            if (!typeEl.value) typeEl.value = 'individual';
-            if (!durationEl.value) durationEl.value = '1 час';
-
-            refresh();
-            show();
-        });
-    });
-
-    dateEl.addEventListener('change', refresh);
-    typeEl.addEventListener('change', function () {
-        roomEl.value = '';
-        trainerEl.value = '';
-        refresh();
-    });
-    roomEl.addEventListener('change', refresh);
-    trainerEl.addEventListener('change', refresh);
-    timeEl.addEventListener('change', refresh);
-
-    modal.addEventListener('click', function (e) {
-        if (e.target && e.target.getAttribute('data-close-admin') === '1') hide();
-    });
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !modal.classList.contains('is-hidden')) hide();
-    });
-})();
-</script>
-@endif
-
 @endsection

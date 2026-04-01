@@ -14,7 +14,7 @@ use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\CourtBookingController;
 
 Route::get('/', function () {
-    return redirect()->route('login');
+    return redirect()->route('home');
 });
 
 Route::get('/home', function () {
@@ -65,10 +65,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/account/edit', [AccountController::class, 'update'])->name('account.update');
 
     Route::post('/account/court-bookings/{group}/cancel', [AccountController::class, 'cancelCourtBooking'])
-    ->name('account.court-bookings.cancel');
+        ->name('account.court-bookings.cancel');
 
     Route::post('/account/court-bookings/{group}/persons', [AccountController::class, 'updateCourtBookingPersons'])
-    ->name('account.court-bookings.update-persons');
+        ->name('account.court-bookings.update-persons');
 
     Route::post('/account/password/send-code', [AccountController::class, 'sendPasswordCode'])->name('account.password.send-code');
     Route::post('/account/password/update', [AccountController::class, 'updatePassword'])->name('account.password.update');
