@@ -15,8 +15,12 @@ class TrainingController extends Controller
     public function showTraining(Request $request)
     {
         $dayOffset = (int) $request->input('week', 0);
-        if ($dayOffset < 0) $dayOffset = 0;
-        if ($dayOffset > 3) $dayOffset = 3;
+        if ($dayOffset < 0) {
+            $dayOffset = 0;
+        }
+        if ($dayOffset > 3) {
+            $dayOffset = 3;
+        }
 
         $selectedType = $request->input('type', 'all');
         $selectedRoom = $request->input('room', 'all');
@@ -37,6 +41,19 @@ class TrainingController extends Controller
             ->orderBy('time', 'asc')
             ->get();
 
+        $myCourtBookings = collect();
+
+        if ($authUser && $authUser->isUser()) {
+            $myCourtBookings = $authUser->courtBookings()
+                ->with('room')
+                ->where('status', 'active')
+                ->whereBetween('date', [
+                    $startDate->format('Y-m-d'),
+                    $endDate->format('Y-m-d'),
+                ])
+                ->get();
+        }
+
         $calendarData = $this->prepareCalendarData(
             $trainings,
             $startDate,
@@ -44,7 +61,8 @@ class TrainingController extends Controller
             $selectedRoom,
             $selectedTrainer,
             $authUser,
-            $authId
+            $authId,
+            $myCourtBookings
         );
 
         $types = $this->getTypes();
@@ -65,9 +83,18 @@ class TrainingController extends Controller
         ));
     }
 
-    private function prepareCalendarData($trainings, Carbon $startDate, $selectedType, $selectedRoom, $selectedTrainer, $authUser, $authId)
-    {
+    private function prepareCalendarData(
+        $trainings,
+        Carbon $startDate,
+        $selectedType,
+        $selectedRoom,
+        $selectedTrainer,
+        $authUser,
+        $authId,
+        $myCourtBookings = null
+    ) {
         $today = Carbon::today();
+
         $dayNames = [
             1 => 'ПН',
             2 => 'ВТ',
@@ -103,6 +130,21 @@ class TrainingController extends Controller
         $types = $this->getTypes();
         $typeColors = $this->getTypeColors();
 
+        $myCourtBookingsMap = [];
+
+        if ($myCourtBookings) {
+            foreach ($myCourtBookings as $booking) {
+                $slotDate = $booking->date;
+                $slotTime = Carbon::parse($booking->time)->format('H:00');
+
+                $myCourtBookingsMap[$slotDate][$slotTime] = [
+                    'room_name' => optional($booking->room)->name ?? 'корт',
+                    'date_formatted' => Carbon::parse($booking->date)->format('d.m.Y'),
+                    'time_formatted' => Carbon::parse($booking->time)->format('H:i'),
+                ];
+            }
+        }
+
         foreach ($trainings as $training) {
             $trainingDate = Carbon::parse($training->date)->startOfDay();
             $dayIndex = $startDate->copy()->startOfDay()->diffInDays($trainingDate, false);
@@ -111,15 +153,19 @@ class TrainingController extends Controller
                 continue;
             }
 
+            $timeSlot = Carbon::parse($training->time)->format('H:00');
+
             $room = $training->rooms->first();
-            $roomName = $room ? $room->name : 'Не указано';
+            $roomName = $room ? $room->name : 'не указано';
             $roomId = $room ? $room->id : null;
 
-            $trainerName = $training->trainer ? $training->trainer->full_name : 'Не назначен';
+            $trainerName = $training->trainer ? $training->trainer->full_name : 'не назначен';
             $trainerId = $training->trainer ? $training->trainer->id : null;
 
             $isBookedByMe = false;
             $hasOtherTrainingAtSameTime = false;
+            $hasCourtBookingAtSameTime = false;
+            $courtBookingInfo = null;
 
             if ($authUser && $authUser->isUser()) {
                 foreach ($training->users as $u) {
@@ -135,6 +181,11 @@ class TrainingController extends Controller
                     ->where('time', $training->time)
                     ->where('trainings.id', '!=', $training->id)
                     ->exists();
+
+                if (isset($myCourtBookingsMap[$training->date][$timeSlot])) {
+                    $hasCourtBookingAtSameTime = true;
+                    $courtBookingInfo = $myCourtBookingsMap[$training->date][$timeSlot];
+                }
             }
 
             $matchesFilters = true;
@@ -155,7 +206,6 @@ class TrainingController extends Controller
                 continue;
             }
 
-            $timeSlot = Carbon::parse($training->time)->format('H:00');
             $color = $typeColors[$training->type] ?? '#777777';
 
             $bookedCount = $training->users()->wherePivot('status', 'active')->count();
@@ -197,6 +247,8 @@ class TrainingController extends Controller
                 'is_booked_by_me' => $isBookedByMe,
                 'has_pending_cancel' => $hasPendingCancel,
                 'has_other_training_at_same_time' => $hasOtherTrainingAtSameTime,
+                'has_court_booking_at_same_time' => $hasCourtBookingAtSameTime,
+                'court_booking_info' => $courtBookingInfo,
 
                 'book_url' => route('trainings.book', $training->id),
                 'cancel_url' => route('trainings.cancel', $training->id),
@@ -210,7 +262,75 @@ class TrainingController extends Controller
                     && $authUser->isTrainer()
                     && (int) $training->trainer_id === (int) $authId
                 ),
+
+                'is_my_court_booking' => false,
             ];
+        }
+
+        if ($authUser && $authUser->isUser() && $myCourtBookings) {
+            foreach ($myCourtBookings as $booking) {
+                $bookingDate = Carbon::parse($booking->date)->startOfDay();
+                $dayIndex = $startDate->copy()->startOfDay()->diffInDays($bookingDate, false);
+
+                if ($dayIndex < 0 || $dayIndex > 6) {
+                    continue;
+                }
+
+                $timeSlot = Carbon::parse($booking->time)->format('H:00');
+
+                if (!isset($calendar['days'][$dayIndex]['trainings'][$timeSlot])) {
+                    $calendar['days'][$dayIndex]['trainings'][$timeSlot] = [];
+                }
+
+                $alreadyHasRentalCard = collect($calendar['days'][$dayIndex]['trainings'][$timeSlot])
+                    ->contains(function ($item) {
+                        return !empty($item['is_my_court_booking']);
+                    });
+
+                if (!$alreadyHasRentalCard) {
+                    $calendar['days'][$dayIndex]['trainings'][$timeSlot][] = [
+                        'id' => 'court_booking_' . $booking->id,
+                        'duration' => $booking->duration ?? '1 час',
+                        'type_name' => 'аренда',
+                        'color' => '#111111',
+                        'price' => (int) ($booking->price ?? 0),
+
+                        'total_seats' => 0,
+                        'booked_seats' => 0,
+                        'free_seats' => 0,
+                        'is_full' => false,
+
+                        'trainer_name' => '—',
+                        'trainer_id' => null,
+                        'trainer_url' => null,
+
+                        'room_name' => optional($booking->room)->name ?? 'корт',
+                        'room_id' => $booking->room_id ?? null,
+                        'room_url' => !empty($booking->room_id) ? route('rooms.view', $booking->room_id) : null,
+
+                        'is_cancelled' => false,
+                        'is_booked_by_me' => false,
+                        'has_pending_cancel' => false,
+                        'has_other_training_at_same_time' => true,
+                        'has_court_booking_at_same_time' => false,
+
+                        'book_url' => null,
+                        'cancel_url' => null,
+                        'request_cancel_url' => null,
+
+                        'date_formatted' => Carbon::parse($booking->date)->format('d.m.Y'),
+                        'time_formatted' => Carbon::parse($booking->time)->format('H:i'),
+
+                        'can_cancel_request' => false,
+                        'is_my_court_booking' => true,
+                        'court_booking_info' => [
+                            'room_name' => optional($booking->room)->name ?? 'корт',
+                            'date_formatted' => Carbon::parse($booking->date)->format('d.m.Y'),
+                            'time_formatted' => Carbon::parse($booking->time)->format('H:i'),
+                        ],
+                    ];
+                }
+            }
         }
 
         return $calendar;
@@ -219,23 +339,25 @@ class TrainingController extends Controller
     private function getTypes()
     {
         return [
-            'individual' => 'Индивидуальная',
-            'split' => 'Сплит',
-            'kids' => 'Детская',
-            'group' => 'Групповая',
-            'fitness' => 'Фитнес',
-            'yoga' => 'Йога',
-            'massage' => 'Массаж'
+            'individual' => 'индивидуальная',
+            'split' => 'сплит',
+            'kids' => 'детская',
+            'group' => 'групповая',
+            'fitness' => 'фитнес',
+            'yoga' => 'йога',
+            'massage' => 'массаж',
         ];
     }
 
     private function getRooms()
     {
         $rooms = Room::orderBy('type')->orderBy('name')->get();
-        $roomList = ['all' => 'Все помещения'];
+        $roomList = ['all' => 'все помещения'];
+
         foreach ($rooms as $room) {
             $roomList[$room->name] = $room->name;
         }
+
         return $roomList;
     }
 
@@ -246,7 +368,7 @@ class TrainingController extends Controller
             ->orderBy('first_name')
             ->get();
 
-        $trainerList = ['all' => 'Все тренеры'];
+        $trainerList = ['all' => 'все тренеры'];
 
         foreach ($trainers as $trainer) {
             $trainerList[$trainer->id] = $trainer->full_name;
@@ -264,7 +386,7 @@ class TrainingController extends Controller
             'group' => '#18a000',
             'fitness' => '#2196F3',
             'yoga' => '#9C27B0',
-            'massage' => '#FF9800'
+            'massage' => '#FF9800',
         ];
     }
 }

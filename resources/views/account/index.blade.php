@@ -5,23 +5,6 @@
 @section('content')
 <div class="container">
     <div class="account-layout">
-        <aside class="account-sidebar">
-            <div class="account-sidebar__title">Личный кабинет</div>
-
-            <button type="button" class="account-sidebar__link js-account-tab is-active" data-tab="account-info">
-                Аккаунт
-            </button>
-
-            <button type="button" class="account-sidebar__link js-account-tab" data-tab="account-trainings">
-                Тренировки
-            </button>
-
-            @if($user->isUser())
-                <button type="button" class="account-sidebar__link js-account-tab" data-tab="account-courts">
-                    Аренда
-                </button>
-            @endif
-        </aside>
 
         <div class="account-content">
             @php
@@ -97,6 +80,75 @@
                     </div>
                 </div>
             </section>
+
+        <section id="account-subscription" class="account-panel">
+    <h2>Мой абонемент</h2>
+
+    @php
+        $subscription = $user->activeSubscription;
+        $statusClass = 'account-subscription-badge--pending';
+
+        if ($subscription && $subscription->status === 'active') {
+            $statusClass = 'account-subscription-badge--active';
+        } elseif ($subscription && $subscription->status === 'payment_overdue') {
+            $statusClass = 'account-subscription-badge--overdue';
+        }
+    @endphp
+
+    @if(!$subscription)
+        <div class="account-subscription-card">
+            <div class="muted">Активного абонемента нет.</div>
+
+            <div class="account-subscription-actions">
+                <a href="{{ route('subscriptions.choose') }}" class="account-edit-btn">Оформить абонемент</a>
+            </div>
+        </div>
+    @else
+        <div class="account-subscription-card">
+            <div class="account-subscription-actions" style="margin-top:0; margin-bottom: 8px;">
+                <span class="account-subscription-badge {{ $statusClass }}">
+    {{ $subscription->status_label }}
+</span>
+            </div>
+
+            <div class="account-subscription-grid">
+                <div class="account-subscription-item">
+                    <span class="k">Тариф</span>
+                    <span class="v">{{ $subscription->plan->name }}</span>
+                </div>
+
+                <div class="account-subscription-item">
+                    <span class="k">Способ оплаты</span>
+                    <span class="v">{{ $subscription->payment_mode_label }}</span>
+                </div>
+
+                <div class="account-subscription-item">
+                    <span class="k">Действует до</span>
+                    <span class="v">{{ optional($subscription->end_date)->format('d.m.Y') }}</span>
+                </div>
+
+                @if($subscription->next_payment_date)
+                    <div class="account-subscription-item">
+                        <span class="k">Следующий платёж</span>
+                        <span class="v">{{ $subscription->next_payment_date->format('d.m.Y') }}</span>
+                    </div>
+                @endif
+
+                @if(!is_null($subscription->visits_left))
+                    <div class="account-subscription-item">
+                        <span class="k">Осталось посещений</span>
+                        <span class="v">{{ $subscription->visits_left }}</span>
+                    </div>
+                @endif
+            </div>
+
+            <div class="account-subscription-actions">
+                <a href="{{ route('subscriptions.history') }}" class="account-edit-btn">История платежей</a>
+                <a href="{{ route('subscriptions.choose', ['mode' => 'renew']) }}" class="account-edit-btn">Продлить абонемент</a>
+            </div>
+        </div>
+    @endif
+</section>
 
             <section id="account-trainings" class="account-panel">
                 <h2>Мои тренировки</h2>
@@ -232,7 +284,7 @@
                                                        value="{{ $booking->persons ?? 1 }}">
                                             </div>
                                             <div>
-                                                <button class="btn-card btn-card--warning" type="submit">Изменить кол-во человек</button>
+                                                <button class="btn-card btn-card--warning" type="submit">изменить</button>
                                             </div>
                                         </div>
                                     </form>
@@ -248,6 +300,28 @@
                 </section>
             @endif
         </div>
+
+        <aside class="account-sidebar">
+            <div class="account-sidebar__title">Личный кабинет</div>
+
+            <button type="button" class="account-sidebar__link js-account-tab is-active" data-tab="account-info">
+                Аккаунт
+            </button>
+
+            <button type="button" class="account-sidebar__link js-account-tab" data-tab="account-trainings">
+                Тренировки
+            </button>
+
+            @if($user->isUser())
+                <button type="button" class="account-sidebar__link js-account-tab" data-tab="account-courts">
+                    Аренда
+                </button>
+            @endif
+
+            <button type="button" class="account-sidebar__link js-account-tab" data-tab="account-subscription">
+                Абонемент
+            </button>
+        </aside>
     </div>
 </div>
 

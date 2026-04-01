@@ -8,6 +8,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Auth\Passwords\CanResetPassword;
+use App\Models\UserSubscription;
 
 class User extends Authenticatable implements CanResetPasswordContract
 {
@@ -109,4 +110,16 @@ class User extends Authenticatable implements CanResetPasswordContract
     {
         return $this->hasMany(CourtBooking::class, 'user_id');
     }
+
+    public function subscriptions()
+{
+    return $this->hasMany(UserSubscription::class, 'user_id');
+}
+
+public function activeSubscription()
+{
+    return $this->hasOne(UserSubscription::class, 'user_id')
+        ->where('status', 'active')
+        ->latestOfMany();
+}
 }

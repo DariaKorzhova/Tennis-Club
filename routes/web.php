@@ -12,6 +12,7 @@ use App\Http\Controllers\TrainerCancellationController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\CourtBookingController;
+use App\Http\Controllers\SubscriptionController;
 
 Route::get('/', function () {
     return redirect()->route('home');
@@ -72,6 +73,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/account/password/send-code', [AccountController::class, 'sendPasswordCode'])->name('account.password.send-code');
     Route::post('/account/password/update', [AccountController::class, 'updatePassword'])->name('account.password.update');
+
+    Route::get('/subscriptions/choose', [SubscriptionController::class, 'choose'])->name('subscriptions.choose');
+    Route::post('/subscriptions/store', [SubscriptionController::class, 'store'])->name('subscriptions.store');
+    Route::get('/subscriptions/history', [SubscriptionController::class, 'history'])->name('subscriptions.history');
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {

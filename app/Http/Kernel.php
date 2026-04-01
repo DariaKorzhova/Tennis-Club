@@ -65,5 +65,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         // В массив $routeMiddleware добавьте:
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        'subscription' => \App\Http\Middleware\EnsureUserHasActiveSubscription::class,
     ];
 }

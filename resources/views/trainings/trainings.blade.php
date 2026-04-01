@@ -101,27 +101,44 @@
                                             @foreach($day['trainings'][$time] as $t)
                                                 @php
                                                     $bg = !empty($t['is_full']) ? '#BDBDBD' : ($t['color'] ?? '#777777');
+
                                                     if (!empty($t['is_booked_by_me'])) {
+                                                        $bg = '#111111';
+                                                    }
+
+                                                    if (!empty($t['is_my_court_booking'])) {
                                                         $bg = '#111111';
                                                     }
                                                 @endphp
 
                                                 <button
                                                     type="button"
-                                                    class="training training--compact js-open-training {{ !empty($t['is_full']) ? 'training--full' : '' }} {{ !empty($t['is_booked_by_me']) ? 'training--mine' : '' }}"
+                                                    class="training training--compact js-open-training {{ !empty($t['is_full']) ? 'training--full' : '' }} {{ !empty($t['is_booked_by_me']) || !empty($t['is_my_court_booking']) ? 'training--mine' : '' }}"
                                                     style="background-color: {{ $bg }};"
                                                     data-training='@json($t)'
                                                 >
                                                     <div class="training-compact__top">
                                                         <div class="training-type">
-                                                            <p>{{ $t['type_name'] }}</p> 
+                                                            <p>{{ $t['type_name'] }}</p>
+
                                                             @if(!empty($t['is_booked_by_me']))
                                                                 <span class="training-booked-mark">вы записаны</span>
+                                                            @elseif(!empty($t['is_my_court_booking']))
+                                                                <span class="training-booked-mark">у вас аренда</span>
+                                                            @elseif(!empty($t['has_court_booking_at_same_time']))
+                                                                <span class="training-booked-mark">заняты арендой</span>
                                                             @endif
                                                         </div>
                                                         <div class="training-duration">{{ $t['duration'] }}</div>
                                                     </div>
-                                                    <div class="training-compact__price">{{ (int)$t['price'] }} ₽ / чел</div>
+
+                                                    <div class="training-compact__price">
+                                                        @if(!empty($t['is_my_court_booking']))
+                                                            {{ $t['room_name'] }}
+                                                        @else
+                                                            {{ (int)$t['price'] }} ₽ / чел
+                                                        @endif
+                                                    </div>
                                                 </button>
                                             @endforeach
                                         @else
@@ -189,14 +206,14 @@
                         <button type="submit" class="btn-card btn-card--success">Записаться</button>
                     </form>
 
-                    <form method="POST" action="#" id="formCancel" class="is-hidden" data-confirm="Отменить запись на тренировку?">
+                    <form method="POST" action="#" id="formCancel" class="is-hidden" data-confirm="отменить запись на тренировку">
                         @csrf
                         <button type="submit" class="btn-card btn-card--danger">Отменить запись</button>
                     </form>
 
                     <form method="POST" action="#" id="formTrainerRequest" class="is-hidden">
                         @csrf
-                        <input class="input-mini" type="text" name="reason" placeholder="Причина (опционально)">
+                        <input class="input-mini" type="text" name="reason" placeholder="причина">
                         <button type="submit" class="btn-card btn-card--warning">Запросить отмену</button>
                     </form>
 
@@ -295,18 +312,28 @@
             if (t.is_cancelled) {
                 if (info) {
                     info.classList.remove('is-hidden');
-                    info.textContent = 'Тренировка отменена.';
+                    info.textContent = 'тренировка отменена';
                 }
             } else if (t.is_booked_by_me) {
                 formCancel.classList.remove('is-hidden');
                 if (info) {
                     info.classList.remove('is-hidden');
-                    info.textContent = 'Вы уже записаны на эту тренировку.';
+                    info.textContent = 'вы уже записаны на эту тренировку';
+                }
+            } else if (t.is_my_court_booking) {
+                if (info) {
+                    info.classList.remove('is-hidden');
+                    info.textContent = 'у вас уже есть аренда корта в это время';
+                }
+            } else if (t.has_court_booking_at_same_time) {
+                if (info) {
+                    info.classList.remove('is-hidden');
+                    info.textContent = 'у вас уже есть аренда корта в это же время';
                 }
             } else if (t.has_other_training_at_same_time) {
                 if (info) {
                     info.classList.remove('is-hidden');
-                    info.textContent = 'У вас уже есть запись на другое занятие в это же время.';
+                    info.textContent = 'у вас уже есть запись на другое занятие в это же время';
                 }
             } else if (parseInt(t.free_seats || 0, 10) > 0) {
                 formBook.classList.remove('is-hidden');

@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             RoomsTableSeeder::class,
             UsersTableSeeder::class,
             TrainingsSeeder::class,
+            SubscriptionPlansSeeder::class
         ]);
     }
 }
