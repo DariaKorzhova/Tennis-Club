@@ -13,6 +13,7 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\CourtBookingController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\ChildController;
 
 Route::get('/', function () {
     return redirect()->route('home');
@@ -53,6 +54,18 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth'])->group(function () {
     Route::get('/account', [AccountController::class, 'index'])->name('account');
 
+    Route::get('/account/edit', [AccountController::class, 'edit'])->name('account.edit');
+    Route::post('/account/edit', [AccountController::class, 'update'])->name('account.update');
+
+    Route::post('/account/password/send-code', [AccountController::class, 'sendPasswordCode'])->name('account.password.send-code');
+    Route::post('/account/password/update', [AccountController::class, 'updatePassword'])->name('account.password.update');
+
+    Route::post('/account/court-bookings/{group}/cancel', [AccountController::class, 'cancelCourtBooking'])
+        ->name('account.court-bookings.cancel');
+
+    Route::post('/account/court-bookings/{group}/persons', [AccountController::class, 'updateCourtBookingPersons'])
+        ->name('account.court-bookings.update-persons');
+
     Route::get('/court-rent', [CourtBookingController::class, 'index'])->name('court-rent.index');
     Route::post('/court-rent/book', [CourtBookingController::class, 'store'])->name('court-rent.store');
 
@@ -62,21 +75,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/trainings/{training}/request-cancel', [TrainerCancellationController::class, 'requestCancel'])
         ->name('trainings.request_cancel');
 
-    Route::get('/account/edit', [AccountController::class, 'edit'])->name('account.edit');
-    Route::post('/account/edit', [AccountController::class, 'update'])->name('account.update');
-
-    Route::post('/account/court-bookings/{group}/cancel', [AccountController::class, 'cancelCourtBooking'])
-        ->name('account.court-bookings.cancel');
-
-    Route::post('/account/court-bookings/{group}/persons', [AccountController::class, 'updateCourtBookingPersons'])
-        ->name('account.court-bookings.update-persons');
-
-    Route::post('/account/password/send-code', [AccountController::class, 'sendPasswordCode'])->name('account.password.send-code');
-    Route::post('/account/password/update', [AccountController::class, 'updatePassword'])->name('account.password.update');
-
     Route::get('/subscriptions/choose', [SubscriptionController::class, 'choose'])->name('subscriptions.choose');
     Route::post('/subscriptions/store', [SubscriptionController::class, 'store'])->name('subscriptions.store');
     Route::get('/subscriptions/history', [SubscriptionController::class, 'history'])->name('subscriptions.history');
+    Route::get('/account/children/create', [ChildController::class, 'create'])->name('account.children.create');
+    Route::post('/account/children', [ChildController::class, 'store'])->name('account.children.store');
+    Route::get('/account/children/{child}/edit', [ChildController::class, 'edit'])->name('account.children.edit');
+    Route::post('/account/children/{child}/update', [ChildController::class, 'update'])->name('account.children.update');
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {

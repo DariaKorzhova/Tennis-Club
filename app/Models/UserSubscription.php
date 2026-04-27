@@ -60,10 +60,6 @@ public function getPaymentModeLabelAttribute(): string
         return $this->belongsTo(User::class);
     }
 
-    public function plan()
-    {
-        return $this->belongsTo(SubscriptionPlan::class, 'plan_id');
-    }
 
     public function payments()
     {
@@ -82,4 +78,32 @@ public function getPaymentModeLabelAttribute(): string
 
         return true;
     }
+
+    public function plan()
+{
+    return $this->belongsTo(SubscriptionPlan::class, 'plan_id');
+}
+
+public function ownerUser()
+{
+    return $this->belongsTo(User::class, 'owner_id');
+}
+
+public function ownerChild()
+{
+    return $this->belongsTo(Child::class, 'owner_id');
+}
+
+public function getOwnerNameAttribute()
+{
+    if ($this->owner_type === 'child' && $this->ownerChild) {
+        return $this->ownerChild->full_name;
+    }
+
+    if ($this->owner_type === 'user' && $this->ownerUser) {
+        return $this->ownerUser->full_name;
+    }
+
+    return '—';
+}
 }

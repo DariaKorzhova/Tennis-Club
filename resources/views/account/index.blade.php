@@ -28,17 +28,31 @@
                     'massage'    => 'Массаж',
                 ];
 
-                $sortedTrainings = $trainings->sortBy(function($t) {
+                $sortedTrainings = collect($trainings ?? [])->sortBy(function($t) {
                     $time = $t->time ? \Carbon\Carbon::parse($t->time)->format('H:i:s') : '00:00:00';
                     return ($t->date ?: '0000-00-00') . ' ' . $time;
                 });
 
+                $children = collect($user->children ?? [])->sortBy(function($child) {
+                    return ($child->last_name ?? '') . ' ' . ($child->first_name ?? '');
+                });
+
+                $subscription = $user->activeSubscription ?? null;
+
+                $statusClass = 'account-subscription-badge--pending';
+                if ($subscription && $subscription->status === 'active') {
+                    $statusClass = 'account-subscription-badge--active';
+                } elseif ($subscription && $subscription->status === 'payment_overdue') {
+                    $statusClass = 'account-subscription-badge--overdue';
+                }
+
                 $initials = mb_strtoupper(
-                    mb_substr($user->first_name, 0, 1) . mb_substr($user->last_name, 0, 1)
+                    mb_substr($user->first_name ?? '', 0, 1) . mb_substr($user->last_name ?? '', 0, 1)
                 );
                 $photoUrl = $user->photo_url ?? null;
             @endphp
 
+            {{-- АККАУНТ --}}
             <section id="account-info" class="account-panel is-active">
                 <h2>Аккаунт</h2>
 
@@ -64,7 +78,13 @@
 
                         <div class="account-info__row">
                             <div class="k">Дата рождения</div>
-                            <div class="v">{{ \Carbon\Carbon::parse($user->birth_date)->format('d.m.Y') }}</div>
+                            <div class="v">
+                                @if(!empty($user->birth_date))
+                                    {{ \Carbon\Carbon::parse($user->birth_date)->format('d.m.Y') }}
+                                @else
+                                    —
+                                @endif
+                            </div>
                         </div>
 
                         @if($user->isTrainer())
@@ -81,75 +101,144 @@
                 </div>
             </section>
 
-        <section id="account-subscription" class="account-panel">
-    <h2>Мой абонемент</h2>
+            {{-- МОЙ АБОНЕМЕНТ --}}
+            <section id="account-subscription" class="account-panel">
+                <h2>Мой абонемент</h2>
 
-    @php
-        $subscription = $user->activeSubscription;
-        $statusClass = 'account-subscription-badge--pending';
+                @if(!$subscription)
+                    <div class="account-subscription-card">
+                        <div class="muted">Активного абонемента нет.</div>
 
-        if ($subscription && $subscription->status === 'active') {
-            $statusClass = 'account-subscription-badge--active';
-        } elseif ($subscription && $subscription->status === 'payment_overdue') {
-            $statusClass = 'account-subscription-badge--overdue';
-        }
-    @endphp
+                        <div class="account-subscription-actions">
+                            <a href="{{ route('subscriptions.choose') }}" class="account-edit-btn">Оформить абонемент</a>
+                        </div>
+                    </div>
+                @else
+                    <div class="account-subscription-card">
+                        <div class="account-subscription-actions" style="margin-top:0; margin-bottom:8px;">
+                            <span class="account-subscription-badge {{ $statusClass }}">
+                                {{ $subscription->status_label }}
+                            </span>
+                        </div>
 
-    @if(!$subscription)
-        <div class="account-subscription-card">
-            <div class="muted">Активного абонемента нет.</div>
+                        <div class="account-subscription-grid">
+                            <div class="account-subscription-item">
+                                <span class="k">Тариф</span>
+                                <span class="v">{{ optional($subscription->plan)->name ?? '—' }}</span>
+                            </div>
 
-            <div class="account-subscription-actions">
-                <a href="{{ route('subscriptions.choose') }}" class="account-edit-btn">Оформить абонемент</a>
-            </div>
-        </div>
-    @else
-        <div class="account-subscription-card">
-            <div class="account-subscription-actions" style="margin-top:0; margin-bottom: 8px;">
-                <span class="account-subscription-badge {{ $statusClass }}">
-    {{ $subscription->status_label }}
-</span>
-            </div>
+                            <div class="account-subscription-item">
+                                <span class="k">Способ оплаты</span>
+                                <span class="v">{{ $subscription->payment_mode_label ?? '—' }}</span>
+                            </div>
 
-            <div class="account-subscription-grid">
-                <div class="account-subscription-item">
-                    <span class="k">Тариф</span>
-                    <span class="v">{{ $subscription->plan->name }}</span>
-                </div>
+                            <div class="account-subscription-item">
+                                <span class="k">Действует до</span>
+                                <span class="v">{{ optional($subscription->end_date)->format('d.m.Y') }}</span>
+                            </div>
 
-                <div class="account-subscription-item">
-                    <span class="k">Способ оплаты</span>
-                    <span class="v">{{ $subscription->payment_mode_label }}</span>
-                </div>
+                            @if(!empty($subscription->next_payment_date))
+                                <div class="account-subscription-item">
+                                    <span class="k">Следующий платёж</span>
+                                    <span class="v">{{ $subscription->next_payment_date->format('d.m.Y') }}</span>
+                                </div>
+                            @endif
 
-                <div class="account-subscription-item">
-                    <span class="k">Действует до</span>
-                    <span class="v">{{ optional($subscription->end_date)->format('d.m.Y') }}</span>
-                </div>
+                            @if(!is_null($subscription->visits_left))
+                                <div class="account-subscription-item">
+                                    <span class="k">Осталось посещений</span>
+                                    <span class="v">{{ $subscription->visits_left }}</span>
+                                </div>
+                            @endif
+                        </div>
 
-                @if($subscription->next_payment_date)
-                    <div class="account-subscription-item">
-                        <span class="k">Следующий платёж</span>
-                        <span class="v">{{ $subscription->next_payment_date->format('d.m.Y') }}</span>
+                        <div class="account-subscription-actions">
+                            <a href="{{ route('subscriptions.history') }}" class="account-edit-btn">История платежей</a>
+                            <a href="{{ route('subscriptions.choose', ['mode' => 'renew']) }}" class="account-edit-btn">Продлить абонемент</a>
+                        </div>
                     </div>
                 @endif
+            </section>
 
-                @if(!is_null($subscription->visits_left))
-                    <div class="account-subscription-item">
-                        <span class="k">Осталось посещений</span>
-                        <span class="v">{{ $subscription->visits_left }}</span>
+            {{-- МОИ ДЕТИ --}}
+            <section id="account-children" class="account-panel">
+                <h2>Мои дети</h2>
+
+                @if($children->isEmpty())
+                    <div class="account-subscription-card">
+                        <div class="muted">В личный кабинет пока не добавлены дети.</div>
+
+                        <div class="account-subscription-actions">
+                            <a href="{{ route('account.children.create') }}" class="account-edit-btn">Добавить ребёнка</a>
+                        </div>
+                    </div>
+                @else
+                    <div class="account-list">
+                        @foreach($children as $child)
+                            @php
+                                $childSub = $child->activeSubscription ?? null;
+
+                                $childStatusClass = 'account-subscription-badge--pending';
+                                if ($childSub && $childSub->status === 'active') {
+                                    $childStatusClass = 'account-subscription-badge--active';
+                                } elseif ($childSub && $childSub->status === 'payment_overdue') {
+                                    $childStatusClass = 'account-subscription-badge--overdue';
+                                }
+                            @endphp
+
+                            <div class="account-training account-training--colored" style="background-color:#2e9b00;">
+                                <div class="acc-top">
+                                    <div class="acc-type">{{ $child->full_name ?? (($child->first_name ?? '') . ' ' . ($child->last_name ?? '')) }}</div>
+                                    <div class="acc-dt">
+                                        @if(!empty($child->birth_date))
+                                            {{ \Carbon\Carbon::parse($child->birth_date)->format('d.m.Y') }}
+                                        @else
+                                            Дата рождения не указана
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="acc-mini">
+                                    <div><strong>Возраст:</strong> {{ $child->age ?? '—' }}</div>
+                                    <div><strong>Уровень:</strong> {{ $child->level ?? '—' }}</div>
+                                </div>
+
+                                @if($childSub)
+                                    <div class="account-subscription-actions" style="margin-top:10px; margin-bottom:8px;">
+                                        <span class="account-subscription-badge {{ $childStatusClass }}">
+                                            {{ $childSub->status_label ?? 'активен' }}
+                                        </span>
+                                    </div>
+
+                                    <div class="acc-mini">
+                                        <div><strong>Абонемент:</strong> {{ optional($childSub->plan)->name ?? '—' }}</div>
+                                        <div><strong>Действует до:</strong> {{ optional($childSub->end_date)->format('d.m.Y') ?? '—' }}</div>
+                                        @if(!is_null($childSub->visits_left))
+                                            <div><strong>Осталось посещений:</strong> {{ $childSub->visits_left }}</div>
+                                        @endif
+                                    </div>
+                                @else
+                                    <div class="muted">У ребёнка пока нет активного абонемента.</div>
+                                @endif
+
+                                <div class="account-subscription-actions">
+                                    <a href="{{ route('account.children.edit', $child->id) }}" class="account-edit-btn">Редактировать</a>
+
+                                    @if(Route::has('account.children.subscriptions'))
+                                        <a href="{{ route('account.children.subscriptions', $child->id) }}" class="account-edit-btn">Абонементы</a>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="account-subscription-actions">
+                        <a href="{{ route('account.children.create') }}" class="account-edit-btn">Добавить ещё ребёнка</a>
                     </div>
                 @endif
-            </div>
+            </section>
 
-            <div class="account-subscription-actions">
-                <a href="{{ route('subscriptions.history') }}" class="account-edit-btn">История платежей</a>
-                <a href="{{ route('subscriptions.choose', ['mode' => 'renew']) }}" class="account-edit-btn">Продлить абонемент</a>
-            </div>
-        </div>
-    @endif
-</section>
-
+            {{-- МОИ ТРЕНИРОВКИ --}}
             <section id="account-trainings" class="account-panel">
                 <h2>Мои тренировки</h2>
 
@@ -165,7 +254,7 @@
                     <div class="account-list">
                         @foreach($sortedTrainings as $t)
                             @php
-                                $room = $t->rooms->first();
+                                $room = $t->rooms->first() ?? null;
 
                                 $bg = $typeColors[$t->type] ?? '#777777';
                                 $typeLabel = $typeNames[$t->type] ?? $t->type;
@@ -244,6 +333,7 @@
                 @endif
             </section>
 
+            {{-- АРЕНДА --}}
             @if($user->isUser())
                 <section id="account-courts" class="account-panel">
                     <h2>Моя аренда кортов</h2>
@@ -284,7 +374,7 @@
                                                        value="{{ $booking->persons ?? 1 }}">
                                             </div>
                                             <div>
-                                                <button class="btn-card btn-card--warning" type="submit">изменить</button>
+                                                <button class="btn-card btn-card--warning" type="submit">Изменить</button>
                                             </div>
                                         </div>
                                     </form>
@@ -306,6 +396,10 @@
 
             <button type="button" class="account-sidebar__link js-account-tab is-active" data-tab="account-info">
                 Аккаунт
+            </button>
+
+            <button type="button" class="account-sidebar__link js-account-tab" data-tab="account-children">
+                Мои дети
             </button>
 
             <button type="button" class="account-sidebar__link js-account-tab" data-tab="account-trainings">

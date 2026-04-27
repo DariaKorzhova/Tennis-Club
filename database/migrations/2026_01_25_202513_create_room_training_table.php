@@ -13,7 +13,6 @@ class CreateRoomTrainingTable extends Migration
             $table->foreignId('room_id')->constrained()->onDelete('cascade');
             $table->foreignId('training_id')->constrained()->onDelete('cascade');
             $table->timestamps();
-            
             $table->unique(['room_id', 'training_id']);
         });
     }

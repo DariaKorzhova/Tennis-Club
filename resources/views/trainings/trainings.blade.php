@@ -9,6 +9,7 @@
     @php
         $user = auth()->user();
         $isAdmin = $user && $user->isAdmin();
+        $children = collect($user->children ?? []);
 
         $currentOffset = (int)($dayOffset ?? 0);
         if ($currentOffset < 0) $currentOffset = 0;
@@ -200,9 +201,42 @@
                 <div class="modal-line"><span class="k">Свободно:</span> <span class="v" id="mFree"></span></div>
                 <div class="modal-line"><span class="k">Тренер:</span> <span class="v" id="mTrainer"></span></div>
                 <div class="modal-line"><span class="k">Место:</span> <span class="v" id="mRoom"></span></div>
+
+                @if($user && $user->isUser())
+                    <div class="modal-line modal-line--column is-hidden" id="bookingTargetRow">
+                        <span class="k">Кого записать:</span>
+
+                        <div class="booking-target-wrap">
+                            <label class="form-label" for="bookable_type">Тип участника</label>
+                            <select name="bookable_type" id="bookable_type" class="form-select">
+                                <option value="user">Себя</option>
+                                @if($children->isNotEmpty())
+                                    <option value="child">Ребёнка</option>
+                                @endif
+                            </select>
+
+                            <label class="form-label" for="bookable_id">Участник</label>
+                            <select name="bookable_id" id="bookable_id" class="form-select">
+                                <option value="{{ $user->id }}" data-type="user">{{ $user->full_name }}</option>
+                                @foreach($children as $child)
+                                    <option value="{{ $child->id }}" data-type="child">
+                                        {{ $child->full_name ?? (($child->first_name ?? '') . ' ' . ($child->last_name ?? '')) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="modal-actions">
                     <form method="POST" action="#" id="formBook" class="is-hidden">
                         @csrf
+
+                        @if($user && $user->isUser())
+                            <input type="hidden" name="bookable_type" id="bookable_type_hidden" value="user">
+                            <input type="hidden" name="bookable_id" id="bookable_id_hidden" value="{{ $user->id }}">
+                        @endif
+
                         <button type="submit" class="btn-card btn-card--success">Записаться</button>
                     </form>
 
@@ -244,6 +278,48 @@
     var formReq = document.getElementById('formTrainerRequest');
     var info = document.getElementById('modalInfo');
 
+    var bookingTargetRow = document.getElementById('bookingTargetRow');
+    var selectBookableType = document.getElementById('bookable_type');
+    var selectBookableId = document.getElementById('bookable_id');
+    var inputBookableType = document.getElementById('bookable_type_hidden');
+    var inputBookableId = document.getElementById('bookable_id_hidden');
+
+    function syncBookableInputs() {
+        if (!selectBookableType || !selectBookableId || !inputBookableType || !inputBookableId) {
+            return;
+        }
+
+        var selectedType = selectBookableType.value;
+
+        Array.from(selectBookableId.options).forEach(function(option) {
+            var optionType = option.getAttribute('data-type');
+            option.hidden = optionType !== selectedType;
+        });
+
+        var visibleOption = Array.from(selectBookableId.options).find(function(option) {
+            return !option.hidden;
+        });
+
+        if (visibleOption) {
+            selectBookableId.value = visibleOption.value;
+        }
+
+        inputBookableType.value = selectedType;
+        inputBookableId.value = selectBookableId.value;
+    }
+
+    if (selectBookableType) {
+        selectBookableType.addEventListener('change', syncBookableInputs);
+    }
+
+    if (selectBookableId) {
+        selectBookableId.addEventListener('change', function() {
+            if (inputBookableId) {
+                inputBookableId.value = selectBookableId.value;
+            }
+        });
+    }
+
     function openModal() {
         modal.classList.remove('is-hidden');
         modal.setAttribute('aria-hidden', 'false');
@@ -267,18 +343,23 @@
     }
 
     if (overlay) overlay.addEventListener('click', closeModal);
+
     modal.querySelectorAll('[data-close="1"]').forEach(function (x) {
         x.addEventListener('click', closeModal);
     });
 
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal && !modal.classList.contains('is-hidden')) closeModal();
+        if (e.key === 'Escape' && modal && !modal.classList.contains('is-hidden')) {
+            closeModal();
+        }
     });
 
     document.querySelectorAll('.js-open-training').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var t = {};
-            try { t = JSON.parse(btn.getAttribute('data-training') || '{}'); } catch (e) {}
+            try {
+                t = JSON.parse(btn.getAttribute('data-training') || '{}');
+            } catch (e) {}
 
             elType.textContent = t.type_name || '—';
             elDate.textContent = t.date_formatted || '—';
@@ -300,14 +381,25 @@
                 elRoom.textContent = t.room_name || '—';
             }
 
-            if (info) { info.classList.add('is-hidden'); info.textContent = ''; }
+            if (info) {
+                info.classList.add('is-hidden');
+                info.textContent = '';
+            }
+
             if (formBook) formBook.classList.add('is-hidden');
             if (formCancel) formCancel.classList.add('is-hidden');
             if (formReq) formReq.classList.add('is-hidden');
+            if (bookingTargetRow) bookingTargetRow.classList.add('is-hidden');
 
             if (formBook) formBook.action = t.book_url || '#';
             if (formCancel) formCancel.action = t.cancel_url || '#';
             if (formReq) formReq.action = t.request_cancel_url || '#';
+
+            if (selectBookableType && selectBookableId && inputBookableType && inputBookableId) {
+                selectBookableType.value = 'user';
+                inputBookableType.value = 'user';
+                syncBookableInputs();
+            }
 
             if (t.is_cancelled) {
                 if (info) {
@@ -337,6 +429,10 @@
                 }
             } else if (parseInt(t.free_seats || 0, 10) > 0) {
                 formBook.classList.remove('is-hidden');
+
+                if (bookingTargetRow) {
+                    bookingTargetRow.classList.remove('is-hidden');
+                }
             }
 
             if (formReq) {
@@ -348,6 +444,10 @@
             openModal();
         });
     });
+
+    if (selectBookableType && selectBookableId) {
+        syncBookableInputs();
+    }
 })();
 </script>
 @endsection

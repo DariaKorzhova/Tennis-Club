@@ -161,6 +161,7 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
+        Andyabih\LaravelToUML\LaravelToUMLServiceProvider::class,
 
         /*
          * Package Service Providers...

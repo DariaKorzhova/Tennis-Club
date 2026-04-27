@@ -9,6 +9,9 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use App\Models\UserSubscription;
+use App\Models\Training;
+use App\Models\CourtBooking;
+use App\Models\Child;
 
 class User extends Authenticatable implements CanResetPasswordContract
 {
@@ -35,23 +38,23 @@ class User extends Authenticatable implements CanResetPasswordContract
     ];
 
     protected $casts = [
-        'email_verified_at' => 'datetime',
-        'birth_date' => 'date',
-        'two_factor_expires_at' => 'datetime',
-        'two_factor_enabled' => 'boolean',
+        'email_verified_at'       => 'datetime',
+        'birth_date'              => 'date',
+        'two_factor_expires_at'   => 'datetime',
+        'two_factor_enabled'      => 'boolean',
     ];
 
     public function getFullNameAttribute()
     {
-        return trim($this->first_name . ' ' . $this->last_name);
+        return trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
     }
 
     public function getRoleNameAttribute()
     {
         $roles = [
-            'user' => 'Пользователь',
-            'admin' => 'Администратор',
-            'trainer' => 'Тренер'
+            'user'    => 'Пользователь',
+            'admin'   => 'Администратор',
+            'trainer' => 'Тренер',
         ];
 
         return $roles[$this->role] ?? $this->role;
@@ -60,11 +63,11 @@ class User extends Authenticatable implements CanResetPasswordContract
     public function getSpecializationNameAttribute()
     {
         $specializations = [
-            'none' => 'Нет',
-            'tennis_trainer' => 'Тренер по теннису',
-            'fitness_trainer' => 'Тренер по фитнесу',
-            'yoga_trainer' => 'Тренер по йоге',
-            'masseur' => 'Массажист'
+            'none'             => 'Нет',
+            'tennis_trainer'   => 'Тренер по теннису',
+            'fitness_trainer'  => 'Тренер по фитнесу',
+            'yoga_trainer'     => 'Тренер по йоге',
+            'masseur'          => 'Массажист',
         ];
 
         return $specializations[$this->specialization] ?? $this->specialization;
@@ -112,14 +115,25 @@ class User extends Authenticatable implements CanResetPasswordContract
     }
 
     public function subscriptions()
-{
-    return $this->hasMany(UserSubscription::class, 'user_id');
-}
+    {
+        return $this->hasMany(UserSubscription::class, 'user_id');
+    }
 
-public function activeSubscription()
-{
-    return $this->hasOne(UserSubscription::class, 'user_id')
-        ->where('status', 'active')
-        ->latestOfMany();
-}
+    public function activeSubscription()
+    {
+        return $this->hasOne(UserSubscription::class, 'user_id')
+            ->where('status', 'active')
+            ->latestOfMany();
+    }
+
+    public function allChildren()
+    {
+        return $this->hasMany(Child::class, 'user_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(Child::class, 'user_id')
+            ->where('is_active', true);
+    }
 }
