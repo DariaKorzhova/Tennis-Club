@@ -12,25 +12,9 @@ use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
 {
-    public function showUsers()
+    public function showPanel()
     {
-        $users = User::orderBy('created_at', 'desc')->get();
-
-        $roles = [
-            'user' => 'Пользователь',
-            'admin' => 'Администратор',
-            'trainer' => 'Тренер'
-        ];
-
-        $specializations = [
-            'none' => 'Не указано',
-            'tennis_trainer' => 'Тренер по теннису',
-            'fitness_trainer' => 'Тренер по фитнесу',
-            'yoga_trainer' => 'Тренер по йоге',
-            'masseur' => 'Массажист'
-        ];
-
-        return view('admin.users', compact('users', 'roles', 'specializations'));
+        return $this->index();
     }
 
     public function updateUserRole(Request $request, User $user)
@@ -429,4 +413,60 @@ class AdminController extends Controller
         }
         return ['fixed' => null, 'min' => 1, 'max' => 20];
     }
+
+    public function index()
+{
+    $users = User::orderBy('created_at', 'desc')->get();
+
+    $rooms = Room::orderBy('type')
+        ->orderBy('name')
+        ->get();
+
+    $trainings = Training::with(['trainer', 'rooms'])
+        ->orderBy('date', 'desc')
+        ->orderBy('time')
+        ->get();
+
+    $roles = [
+        'user' => 'Пользователь',
+        'admin' => 'Администратор',
+        'trainer' => 'Тренер',
+    ];
+
+    $specializations = [
+        'none' => 'Не указано',
+        'tennis_trainer' => 'Тренер по теннису',
+        'fitness_trainer' => 'Тренер по фитнесу',
+        'yoga_trainer' => 'Тренер по йоге',
+        'masseur' => 'Массажист',
+    ];
+
+    $typeNames = [
+        'individual' => 'Индивидуальная',
+        'split' => 'Сплит',
+        'kids' => 'Детская',
+        'group' => 'Групповая',
+        'fitness' => 'Фитнес',
+        'yoga' => 'Йога',
+        'massage' => 'Массаж',
+    ];
+
+    $roomTypeNames = [
+        'tennis_court' => 'Теннисный корт',
+        'yoga_hall' => 'Зал йоги',
+        'gym' => 'Тренажёрный зал',
+        'group_hall' => 'Групповой зал',
+        'massage_room' => 'Массажный кабинет',
+    ];
+
+    return view('admin.index', compact(
+        'users',
+        'rooms',
+        'trainings',
+        'roles',
+        'specializations',
+        'typeNames',
+        'roomTypeNames'
+    ));
+}
 }

@@ -13,8 +13,8 @@ class Training extends Model
         'time',
         'date',
         'duration',
-        'persons',     // всего мест
-        'price',       // цена за 1 человека
+        'persons',
+        'price',
         'type',
         'room_type',
         'trainer_id',

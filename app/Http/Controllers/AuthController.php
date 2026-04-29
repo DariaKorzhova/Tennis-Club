@@ -187,7 +187,7 @@ class AuthController extends Controller
     private function redirectAfterAuth(User $user)
     {
         if ($user->role === 'admin') {
-            return redirect()->route('admin.users');
+            return redirect()->route('admin.panel');
         }
 
         return redirect()->route('account');

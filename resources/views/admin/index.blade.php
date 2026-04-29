@@ -7,7 +7,6 @@
     <h1 class="section-title">Админ-панель</h1>
 
     <div class="account-layout admin-layout">
-
         <div class="account-content">
 
             {{-- РЕДАКТИРОВАТЬ ПОМЕЩЕНИЯ --}}
@@ -17,10 +16,6 @@
                         <h2>Редактировать помещения</h2>
                         <p class="admin-subtitle">Управление залами, кабинетами и другими помещениями клуба</p>
                     </div>
-
-                    @if(\Illuminate\Support\Facades\Route::has('admin.rooms.create'))
-                        <a href="{{ route('admin.rooms.create') }}" class="account-edit-btn">Добавить помещение</a>
-                    @endif
                 </div>
 
                 <div class="users-table-container">
@@ -31,7 +26,6 @@
                                 <th>Название</th>
                                 <th>Тип</th>
                                 <th>Описание</th>
-                                <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -45,25 +39,10 @@
                                         </span>
                                     </td>
                                     <td>{{ $room->description ?? '—' }}</td>
-                                    <td>
-                                        <div class="admin-table-actions">
-                                            @if(\Illuminate\Support\Facades\Route::has('admin.rooms.edit'))
-                                                <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn-save">Редактировать</a>
-                                            @endif
-
-                                            @if(\Illuminate\Support\Facades\Route::has('admin.rooms.destroy'))
-                                                <form method="POST" action="{{ route('admin.rooms.destroy', $room->id) }}" data-confirm="Удалить помещение?">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn-cancel">Удалить</button>
-                                                </form>
-                                            @endif
-                                        </div>
-                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-muted">Помещения пока не добавлены.</td>
+                                    <td colspan="4" class="text-muted">Помещения пока не добавлены.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -81,13 +60,13 @@
                     </div>
 
                     <div class="admin-header-actions">
-                        @if(\Illuminate\Support\Facades\Route::has('admin.trainings.create'))
-                            <a href="{{ route('admin.trainings.create') }}" class="account-edit-btn">Добавить тренировку</a>
-                        @endif
+                        <a href="{{ route('admin.trainings.create') }}" class="account-edit-btn">
+                            Добавить тренировку
+                        </a>
 
-                        @if(\Illuminate\Support\Facades\Route::has('admin.cancellations'))
-                            <a href="{{ route('admin.cancellations') }}" class="account-secondary-btn">Запросы отмены</a>
-                        @endif
+                        <a href="{{ route('admin.cancellations') }}" class="account-secondary-btn">
+                            Запросы отмены
+                        </a>
                     </div>
                 </div>
 
@@ -110,6 +89,7 @@
                                 @php
                                     $room = $training->rooms->first();
                                 @endphp
+
                                 <tr>
                                     <td>{{ $training->id }}</td>
                                     <td>{{ \Carbon\Carbon::parse($training->date)->format('d.m.Y') }}</td>
@@ -117,9 +97,9 @@
                                     <td>{{ $typeNames[$training->type] ?? $training->type }}</td>
                                     <td>{{ $training->trainer->name ?? '—' }}</td>
                                     <td>{{ $room->name ?? '—' }}</td>
-                                    <td>{{ (int)$training->price }} ₽</td>
+                                    <td>{{ (int) $training->price }} ₽</td>
                                     <td>
-                                        @if($training->is_cancelled)
+                                        @if(!empty($training->is_cancelled))
                                             <span class="badge badge--cancelled">Отменена</span>
                                         @else
                                             <span class="badge">Активна</span>
@@ -161,12 +141,12 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($users as $user)
+                            @forelse($users as $user)
                                 <tr>
                                     <td>{{ $user->id }}</td>
                                     <td>{{ $user->name }}</td>
                                     <td>{{ $user->email }}</td>
-                                    <td>{{ $user->age }}</td>
+                                    <td>{{ $user->age ?? '—' }}</td>
                                     <td>
                                         <span class="role-badge role-{{ $user->role }}">
                                             {{ $roles[$user->role] ?? $user->role }}
@@ -189,7 +169,7 @@
                                             <div class="role-selector">
                                                 <select name="role" class="role-select" onchange="this.form.submit()">
                                                     @foreach($roles as $key => $label)
-                                                        <option value="{{ $key }}" {{ $user->role == $key ? 'selected' : '' }}>
+                                                        <option value="{{ $key }}" {{ $user->role === $key ? 'selected' : '' }}>
                                                             {{ $label }}
                                                         </option>
                                                     @endforeach
@@ -198,7 +178,7 @@
                                                 @if($user->role === 'trainer')
                                                     <select name="specialization" class="specialization-select" onchange="this.form.submit()">
                                                         @foreach($specializations as $key => $label)
-                                                            <option value="{{ $key }}" {{ $user->specialization == $key ? 'selected' : '' }}>
+                                                            <option value="{{ $key }}" {{ $user->specialization === $key ? 'selected' : '' }}>
                                                                 {{ $label }}
                                                             </option>
                                                         @endforeach
@@ -208,7 +188,11 @@
                                         </form>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="text-muted">Пользователи пока не найдены.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -243,10 +227,6 @@
                         <h2>Редактировать корты</h2>
                         <p class="admin-subtitle">Отдельный раздел для управления теннисными кортами</p>
                     </div>
-
-                    @if(\Illuminate\Support\Facades\Route::has('admin.rooms.create'))
-                        <a href="{{ route('admin.rooms.create', ['type' => 'tennis_court']) }}" class="account-edit-btn">Добавить корт</a>
-                    @endif
                 </div>
 
                 <div class="corts admin-courts-grid">
@@ -256,23 +236,14 @@
                                 <img src="{{ asset('storage/' . $court->image) }}" alt="{{ $court->name }}">
                             @endif
 
-                            <h3>{{ $court->name }}</h3>
+                            <div class="roomName">
+                                <h3>{{ $court->name }}</h3>
+                            </div>
+
                             <p>{{ $court->description ?? 'Описание не указано' }}</p>
 
-                            <div class="admin-card-actions">
-                                @if(\Illuminate\Support\Facades\Route::has('admin.rooms.edit'))
-                                    <a href="{{ route('admin.rooms.edit', $court->id) }}" class="account-edit-btn">
-                                        Редактировать
-                                    </a>
-                                @endif
-
-                                @if(\Illuminate\Support\Facades\Route::has('admin.rooms.destroy'))
-                                    <form method="POST" action="{{ route('admin.rooms.destroy', $court->id) }}" data-confirm="Удалить корт?">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="account-secondary-btn">Удалить</button>
-                                    </form>
-                                @endif
+                            <div>
+                                <span>Теннисный корт</span>
                             </div>
                         </div>
                     @empty
@@ -304,10 +275,8 @@
                 Редактировать корты
             </button>
         </aside>
-
     </div>
 </div>
-
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -338,6 +307,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     try {
         const saved = localStorage.getItem('adminActiveTab');
+
         if (saved && document.getElementById(saved)) {
             initialTab = saved;
         }

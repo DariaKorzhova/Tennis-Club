@@ -78,18 +78,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/subscriptions/choose', [SubscriptionController::class, 'choose'])->name('subscriptions.choose');
     Route::post('/subscriptions/store', [SubscriptionController::class, 'store'])->name('subscriptions.store');
     Route::get('/subscriptions/history', [SubscriptionController::class, 'history'])->name('subscriptions.history');
+
     Route::get('/account/children/create', [ChildController::class, 'create'])->name('account.children.create');
     Route::post('/account/children', [ChildController::class, 'store'])->name('account.children.store');
     Route::get('/account/children/{child}/edit', [ChildController::class, 'edit'])->name('account.children.edit');
     Route::post('/account/children/{child}/update', [ChildController::class, 'update'])->name('account.children.update');
 });
 
+/* ---------- ADMIN ---------- */
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
-    Route::get('/', function () {
-        return redirect()->route('admin.users');
-    })->name('admin');
+    Route::get('/', [AdminController::class, 'index'])->name('admin.panel');
 
-    Route::get('/users', [AdminController::class, 'showUsers'])->name('admin.users');
+    Route::get('/users', [AdminController::class, 'showPanel'])->name('admin.panel');
     Route::post('/users/{user}/update-role', [AdminController::class, 'updateUserRole'])->name('admin.users.update-role');
 
     Route::get('/trainings/create', [AdminController::class, 'createTraining'])->name('admin.trainings.create');

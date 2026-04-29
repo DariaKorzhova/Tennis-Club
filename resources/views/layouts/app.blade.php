@@ -20,7 +20,7 @@
 
             @auth
                 @if(Auth::user()->role === 'admin')
-                    <a href="{{ route('admin.users') }}">админ-панель</a>
+                    <a href="{{ route('admin.panel') }}">админ-панель</a>
                 @endif
 
                 @if(in_array(Auth::user()->role, ['user','trainer']))
