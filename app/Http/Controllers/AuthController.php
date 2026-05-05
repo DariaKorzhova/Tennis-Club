@@ -52,11 +52,11 @@ class AuthController extends Controller
                 'confirmed',
             ],
         ], [
-            'first_name.regex' => 'Имя должно содержать только русские буквы.',
-            'last_name.regex' => 'Фамилия должна содержать только русские буквы.',
-            'email.regex' => 'Введите корректный email с доменом, например example@mail.com.',
-            'birth_date.date_format' => 'Введите дату в формате ДД.ММ.ГГГГ.',
-            'birth_date.before' => 'Дата рождения должна быть раньше сегодняшнего дня.',
+            'first_name.regex' => 'имя должно содержать только русские буквы.',
+            'last_name.regex' => 'фамилия должна содержать только русские буквы.',
+            'email.regex' => 'введите корректный email с доменом, например example@mail.com.',
+            'birth_date.date_format' => 'введите дату в формате дд.мм.гггг.',
+            'birth_date.before' => 'дата рождения должна быть раньше сегодняшнего дня.',
         ]);
 
         if ($validator->fails()) {
@@ -83,7 +83,7 @@ class AuthController extends Controller
 
         return redirect()
             ->route('2fa.show')
-            ->with('status', 'Код подтверждения отправлен на вашу почту. Завершите вход.');
+            ->with('status', 'код подтверждения отправлен на вашу почту. завершите вход.');
     }
 
     public function showLoginForm()
@@ -109,7 +109,7 @@ class AuthController extends Controller
 
         if (!Auth::validate($credentials)) {
             return back()
-                ->withErrors(['email' => 'Неверные учетные данные'])
+                ->withErrors(['email' => 'неверные учетные данные'])
                 ->onlyInput('email');
         }
 
@@ -117,7 +117,7 @@ class AuthController extends Controller
 
         if (!$user) {
             return back()
-                ->withErrors(['email' => 'Неверные учетные данные'])
+                ->withErrors(['email' => 'неверные учетные данные'])
                 ->onlyInput('email');
         }
         
@@ -127,20 +127,20 @@ class AuthController extends Controller
             $request->session()->regenerate();
 
             return $this->redirectAfterAuth($user)
-                ->with('success', 'Вход выполнен успешно!');
+                ->with('success', 'вход выполнен успешно!');
         }
 
         $this->startTwoFactorFlow($request, $user, $request->boolean('remember'));
 
         return redirect()
             ->route('2fa.show')
-            ->with('status', 'Код отправлен на вашу почту.');*/
+            ->with('status', 'код отправлен на вашу почту.');*/
 
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
         return $this->redirectAfterAuth($user)
-            ->with('success', 'Вход выполнен успешно!');
+            ->with('success', 'вход выполнен успешно!');
     }
 
     public function logout(Request $request)
@@ -163,7 +163,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('success', 'Вы вышли из системы');
+        return redirect()->route('login')->with('success', 'вы вышли из системы');
     }
 
     private function startTwoFactorFlow(Request $request, User $user, bool $remember = false): void

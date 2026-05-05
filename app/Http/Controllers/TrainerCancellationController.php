@@ -14,16 +14,16 @@ class TrainerCancellationController extends Controller
         $user = Auth::user();
 
         if (!$user || !$user->isTrainer()) {
-            return redirect()->back()->with('error', 'Доступ только для тренера.');
+            return redirect()->back()->with('error', 'доступ только для тренера.');
         }
 
         // тренер может запросить отмену только своей тренировки
         if ((int)$training->trainer_id !== (int)$user->id) {
-            return redirect()->back()->with('error', 'Вы можете запросить отмену только своей тренировки.');
+            return redirect()->back()->with('error', 'вы можете запросить отмену только своей тренировки.');
         }
 
         if ((bool)$training->is_cancelled) {
-            return redirect()->back()->with('error', 'Тренировка уже отменена.');
+            return redirect()->back()->with('error', 'тренировка уже отменена.');
         }
 
         $exists = CancellationRequest::where('training_id', $training->id)
@@ -31,7 +31,7 @@ class TrainerCancellationController extends Controller
             ->exists();
 
         if ($exists) {
-            return redirect()->back()->with('error', 'Запрос на отмену уже отправлен.');
+            return redirect()->back()->with('error', 'запрос на отмену уже отправлен.');
         }
 
         CancellationRequest::create([
@@ -41,6 +41,6 @@ class TrainerCancellationController extends Controller
             'reason'      => $request->input('reason'),
         ]);
 
-        return redirect()->back()->with('success', 'Запрос на отмену отправлен админу.');
+        return redirect()->back()->with('success', 'запрос на отмену отправлен админу.');
     }
 }

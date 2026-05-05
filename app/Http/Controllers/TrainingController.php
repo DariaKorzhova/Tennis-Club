@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Training;
 use App\Models\Room;
 use App\Models\User;
+use App\Models\TrainingBooking;
 use App\Models\CancellationRequest;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -25,12 +26,44 @@ class TrainingController extends Controller
         $selectedType = $request->input('type', 'all');
         $selectedRoom = $request->input('room', 'all');
         $selectedTrainer = (string) $request->input('trainer', 'all');
+        $participant = (string) $request->input('participant', 'user');
 
         $startDate = Carbon::today()->addDays($dayOffset * 7)->startOfDay();
         $endDate = $startDate->copy()->addDays(6)->endOfDay();
 
         $authUser = Auth::user();
         $authId = Auth::id();
+
+        $participantType = 'user';
+        $participantId = $authId ? (int) $authId : null;
+        if ($authUser && $authUser->isUser() && $participant) {
+            if (preg_match('/^(user|child):(\d+)$/', $participant, $m)) {
+                $participantType = $m[1];
+                $participantId = (int) $m[2];
+
+                if ($participantType === 'user') {
+                    $participantId = (int) $authId;
+                } else {
+                    $ownsChild = $authUser->children()->where('id', $participantId)->exists();
+                    if (!$ownsChild) {
+                        $participantType = 'user';
+                        $participantId = (int) $authId;
+                        $participant = 'user:' . (int) $authId;
+                    }
+                }
+            } else {
+                $participantType = 'user';
+                $participantId = (int) $authId;
+                $participant = 'user:' . (int) $authId;
+            }
+        }
+
+        if ($participantType === 'child') {
+            $allowedForChild = ['kids', 'yoga', 'massage', 'fitness'];
+            if ($selectedType !== 'all' && !in_array($selectedType, $allowedForChild, true)) {
+                $selectedType = 'all';
+            }
+        }
 
         $trainings = Training::with(['rooms', 'trainer', 'users'])
             ->whereBetween('date', [
@@ -62,7 +95,9 @@ class TrainingController extends Controller
             $selectedTrainer,
             $authUser,
             $authId,
-            $myCourtBookings
+            $myCourtBookings,
+            $participantType,
+            $participantId
         );
 
         $types = $this->getTypes();
@@ -79,7 +114,10 @@ class TrainingController extends Controller
             'selectedRoom',
             'selectedTrainer',
             'typeColors',
-            'dayOffset'
+            'dayOffset',
+            'participant',
+            'participantType',
+            'participantId'
         ));
     }
 
@@ -91,18 +129,20 @@ class TrainingController extends Controller
         $selectedTrainer,
         $authUser,
         $authId,
-        $myCourtBookings = null
+        $myCourtBookings = null,
+        string $participantType = 'user',
+        ?int $participantId = null
     ) {
         $today = Carbon::today();
 
         $dayNames = [
-            1 => 'ПН',
-            2 => 'ВТ',
-            3 => 'СР',
-            4 => 'ЧТ',
-            5 => 'ПТ',
-            6 => 'СБ',
-            7 => 'ВС',
+            1 => 'пн',
+            2 => 'вт',
+            3 => 'ср',
+            4 => 'чт',
+            5 => 'пт',
+            6 => 'сб',
+            7 => 'вс',
         ];
 
         $timeSlots = [];
@@ -146,6 +186,13 @@ class TrainingController extends Controller
         }
 
         foreach ($trainings as $training) {
+            if ($participantType === 'child') {
+                $allowedForChild = ['kids', 'yoga', 'massage', 'fitness'];
+                if (!in_array($training->type, $allowedForChild, true)) {
+                    continue;
+                }
+            }
+
             $trainingDate = Carbon::parse($training->date)->startOfDay();
             $dayIndex = $startDate->copy()->startOfDay()->diffInDays($trainingDate, false);
 
@@ -167,22 +214,47 @@ class TrainingController extends Controller
             $hasCourtBookingAtSameTime = false;
             $courtBookingInfo = null;
 
-            if ($authUser && $authUser->isUser()) {
-                foreach ($training->users as $u) {
-                    if ((int) $u->id === (int) $authId && $u->pivot && $u->pivot->status === 'active') {
-                        $isBookedByMe = true;
-                        break;
+            if ($authUser && $authUser->isUser() && $participantId) {
+                // новая схема: training_bookings
+                $isBookedByMe = TrainingBooking::query()
+                    ->where('training_id', $training->id)
+                    ->where('bookable_type', $participantType)
+                    ->where('bookable_id', $participantId)
+                    ->where('status', 'active')
+                    ->exists();
+
+                // fallback: старая схема (только себя)
+                if (!$isBookedByMe && $participantType === 'user') {
+                    foreach ($training->users as $u) {
+                        if ((int) $u->id === (int) $authId && $u->pivot && $u->pivot->status === 'active') {
+                            $isBookedByMe = true;
+                            break;
+                        }
                     }
                 }
 
-                $hasOtherTrainingAtSameTime = $authUser->bookedTrainings()
-                    ->wherePivot('status', 'active')
-                    ->where('date', $training->date)
-                    ->where('time', $training->time)
-                    ->where('trainings.id', '!=', $training->id)
+                $hasOtherTrainingAtSameTime = TrainingBooking::query()
+                    ->where('account_user_id', $authId)
+                    ->where('bookable_type', $participantType)
+                    ->where('bookable_id', $participantId)
+                    ->where('status', 'active')
+                    ->whereHas('training', function ($q) use ($training) {
+                        $q->where('date', $training->date)
+                            ->where('time', $training->time)
+                            ->where('id', '!=', $training->id);
+                    })
                     ->exists();
 
-                if (isset($myCourtBookingsMap[$training->date][$timeSlot])) {
+                if (!$hasOtherTrainingAtSameTime && $participantType === 'user') {
+                    $hasOtherTrainingAtSameTime = $authUser->bookedTrainings()
+                        ->wherePivot('status', 'active')
+                        ->where('date', $training->date)
+                        ->where('time', $training->time)
+                        ->where('trainings.id', '!=', $training->id)
+                        ->exists();
+                }
+
+                if ($participantType === 'user' && isset($myCourtBookingsMap[$training->date][$timeSlot])) {
                     $hasCourtBookingAtSameTime = true;
                     $courtBookingInfo = $myCourtBookingsMap[$training->date][$timeSlot];
                 }
@@ -208,7 +280,13 @@ class TrainingController extends Controller
 
             $color = $typeColors[$training->type] ?? '#777777';
 
-            $bookedCount = $training->users()->wherePivot('status', 'active')->count();
+            $bookedCount = TrainingBooking::query()
+                ->where('training_id', $training->id)
+                ->where('status', 'active')
+                ->count();
+
+            // fallback: старые записи через training_user
+            $bookedCount += $training->users()->wherePivot('status', 'active')->count();
             $totalSeats = (int) ($training->persons ?? 0);
             $freeSeats = max(0, $totalSeats - $bookedCount);
 

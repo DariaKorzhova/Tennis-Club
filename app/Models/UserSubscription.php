@@ -33,12 +33,12 @@ class UserSubscription extends Model
     public function getStatusLabelAttribute(): string
 {
     $map = [
-        'pending' => 'Ожидает оплаты',
-        'active' => 'Активен',
-        'paused' => 'Приостановлен',
-        'expired' => 'Истёк',
-        'cancelled' => 'Отменён',
-        'payment_overdue' => 'Просрочен платёж',
+        'pending' => 'ожидает оплаты',
+        'active' => 'активен',
+        'paused' => 'приостановлен',
+        'expired' => 'истёк',
+        'cancelled' => 'отменён',
+        'payment_overdue' => 'просрочен платёж',
     ];
 
     return $map[$this->status] ?? $this->status;
@@ -47,9 +47,9 @@ class UserSubscription extends Model
 public function getPaymentModeLabelAttribute(): string
 {
     $map = [
-        'one_time' => 'Единоразово',
-        'monthly' => 'Раз в месяц',
-        'installment' => 'Рассрочка',
+        'one_time' => 'единоразово',
+        'monthly' => 'раз в месяц',
+        'installment' => 'рассрочка',
     ];
 
     return $map[$this->payment_mode] ?? $this->payment_mode;
@@ -106,4 +106,67 @@ public function getOwnerNameAttribute()
 
     return '—';
 }
+
+    public function paidTotalAmount(): int
+    {
+        return (int) $this->payments()->where('status', 'paid')->sum('amount');
+    }
+
+    public function remainingPlanAmount(): int
+    {
+        if (!$this->plan) {
+            return 0;
+        }
+
+        return max(0, (int) $this->plan->full_price - $this->paidTotalAmount());
+    }
+
+    public function installmentMonthsCount(): int
+    {
+        return $this->plan ? max(1, (int) $this->plan->duration_months) : 1;
+    }
+
+    public function installmentFullPrice(): int
+    {
+        return $this->plan ? (int) $this->plan->full_price : 0;
+    }
+
+    /** Базовая сумма месяца без остатка от деления (после первого платежа). */
+    public function installmentBaseMonthlyAmount(): int
+    {
+        $m = $this->installmentMonthsCount();
+        $full = $this->installmentFullPrice();
+
+        return intdiv($full, $m);
+    }
+
+    /** Первый платёж в рассрочке (с учётом остатка от деления). */
+    public function installmentFirstScheduledAmount(): int
+    {
+        $m = $this->installmentMonthsCount();
+        $full = $this->installmentFullPrice();
+
+        return intdiv($full, $m) + ($full % $m);
+    }
+
+    /**
+     * Рекомендуемая сумма следующего взноса по рассрочке.
+     */
+    public function suggestedInstallmentNextPaymentAmount(): ?int
+    {
+        if ($this->payment_mode !== 'installment' || !$this->plan) {
+            return null;
+        }
+
+        $remaining = $this->remainingPlanAmount();
+        if ($remaining <= 0) {
+            return null;
+        }
+
+        $paidCount = (int) $this->payments()->where('status', 'paid')->count();
+        $months = $this->installmentMonthsCount();
+        $leftMonths = max(1, $months - $paidCount);
+
+        return (int) max(1, min($remaining, (int) ceil($remaining / $leftMonths)));
+    }
 }

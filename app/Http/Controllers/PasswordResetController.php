@@ -28,9 +28,9 @@ class PasswordResetController extends Controller
         $status = Password::sendResetLink($request->only('email'));
 
         return $status === Password::RESET_LINK_SENT
-            ? back()->with('status', 'Ссылка для сброса пароля отправлена на почту.')
+            ? back()->with('status', 'ссылка для сброса пароля отправлена на почту.')
             : back()->withErrors([
-                'email' => 'Не удалось отправить письмо для сброса пароля.',
+                'email' => 'не удалось отправить письмо для сброса пароля.',
             ]);
     }
 
@@ -67,9 +67,9 @@ class PasswordResetController extends Controller
         );
 
         return $status === Password::PASSWORD_RESET
-            ? redirect()->route('login')->with('status', 'Пароль успешно изменён. Войдите заново.')
+            ? redirect()->route('login')->with('status', 'пароль успешно изменён. войдите заново.')
             : back()->withErrors([
-                'email' => 'Не удалось сбросить пароль. Проверьте ссылку и попробуйте снова.',
+                'email' => 'не удалось сбросить пароль. проверьте ссылку и попробуйте снова.',
             ]);
     }
 }

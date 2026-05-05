@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Редактировать ребёнка')
+@section('title', 'редактировать ребёнка')
 
 @section('content')
 <div class="container">
     <div class="account-form-wrap">
-        <h1>Редактировать данные ребёнка</h1>
+        <h1>редактировать данные ребёнка</h1>
 
         @if ($errors->any())
             <div class="alert alert-danger" style="margin-bottom: 20px;">
@@ -21,7 +21,7 @@
             @csrf
 
             <div class="form-group">
-                <label for="first_name">Имя</label>
+                <label for="first_name">имя</label>
                 <input
                     type="text"
                     id="first_name"
@@ -33,7 +33,7 @@
             </div>
 
             <div class="form-group">
-                <label for="last_name">Фамилия</label>
+                <label for="last_name">фамилия</label>
                 <input
                     type="text"
                     id="last_name"
@@ -45,7 +45,7 @@
             </div>
 
             <div class="form-group">
-                <label for="birth_date">Дата рождения</label>
+                <label for="birth_date">дата рождения</label>
                 <input
                     type="date"
                     id="birth_date"
@@ -56,40 +56,40 @@
             </div>
 
             <div class="form-group">
-                <label for="gender">Пол</label>
+                <label for="gender">пол</label>
                 <select id="gender" name="gender" class="form-control">
-                    <option value="">Не выбран</option>
-                    <option value="male" {{ old('gender', $child->gender) === 'male' ? 'selected' : '' }}>Мужской</option>
-                    <option value="female" {{ old('gender', $child->gender) === 'female' ? 'selected' : '' }}>Женский</option>
+                    <option value="">не выбран</option>
+                    <option value="male" {{ old('gender', $child->gender) === 'male' ? 'selected' : '' }}>мужской</option>
+                    <option value="female" {{ old('gender', $child->gender) === 'female' ? 'selected' : '' }}>женский</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="level">Уровень подготовки</label>
+                <label for="level">уровень подготовки</label>
                 <input
                     type="text"
                     id="level"
                     name="level"
                     class="form-control"
                     value="{{ old('level', $child->level) }}"
-                    placeholder="Например: начальный"
+                    placeholder="например: начальный"
                 >
             </div>
 
             <div class="form-group">
-                <label for="notes">Примечание</label>
+                <label for="notes">примечание</label>
                 <textarea
                     id="notes"
                     name="notes"
                     class="form-control"
                     rows="4"
-                    placeholder="Дополнительная информация"
+                    placeholder="дополнительная информация"
                 >{{ old('notes', $child->notes) }}</textarea>
             </div>
 
             <div class="form-actions" style="display:flex; gap:12px; margin-top:20px;">
-                <button type="submit" class="account-edit-btn">Сохранить изменения</button>
-                <a href="{{ route('account') }}" class="account-edit-btn" style="text-decoration:none;">Назад</a>
+                <button type="submit" class="account-edit-btn">сохранить изменения</button>
+                <a href="{{ route('account') }}" class="account-edit-btn" style="text-decoration:none;">назад</a>
             </div>
         </form>
     </div>

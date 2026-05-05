@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'Аренда кортов')
+@section('title', 'аренда кортов')
 
 @section('content')
 <div class="container">
-    <h1>Аренда кортов</h1>
+    <h1>аренда кортов</h1>
 
     @php
         $currentOffset = (int)($dayOffset ?? 0);
@@ -22,7 +22,7 @@
         <form method="GET" action="{{ route('court-rent.index') }}" class="row" id="courtFilterForm">
             <input type="hidden" name="week" value="{{ $currentOffset }}">
 
-            <label class="form-label" for="room_id">Корт:</label>
+            <label class="form-label" for="room_id">корт:</label>
             <select name="room_id" id="room_id" class="form-select" onchange="this.form.submit()">
                 @foreach($courts as $court)
                     <option value="{{ $court->id }}" {{ (int)$selectedCourtId === (int)$court->id ? 'selected' : '' }}>
@@ -32,7 +32,7 @@
             </select>
 
             <a href="{{ route('court-rent.index', ['week' => $currentOffset, 'room_id' => $selectedCourtId]) }}" class="btn-secondary">
-                Сбросить
+                сбросить
             </a>
         </form>
     </div>
@@ -49,7 +49,7 @@
             <table class="calendar">
                 <thead>
                 <tr>
-                    <th class="time-column">Время</th>
+                    <th class="time-column">время</th>
                     @foreach($calendarData['days'] as $day)
                         <th class="{{ $day['isToday'] ? 'is-today' : '' }}">
                             <div class="day-header">{{ $day['name'] }}</div>
@@ -80,14 +80,14 @@
         data-time="{{ $cell['time'] }}"
         data-price-hour="{{ $pricePerHour }}"
     >
-        Записаться
+        записаться
     </button>
 @elseif($cell && $cell['status'] === 'booked')
     <div class="court-slot court-slot--booked"></div>
 @elseif($cell && $cell['status'] === 'my_training')
     <div class="court-slot court-slot--my-training">
         <span class="court-slot__label">
-            {{ $cell['type_label'] ?? 'Тренировка' }}
+            {{ $cell['type_label'] ?? 'тренировка' }}
         </span>
 
         @if(!empty($cell['training_room_name']))
@@ -98,6 +98,10 @@
     </div>
 @elseif($cell && $cell['status'] === 'training')
     <div class="court-slot court-slot--training"></div>
+@elseif($cell && $cell['status'] === 'not_available')
+    <div class="court-slot court-slot--na">
+        <span class="court-slot__label court-slot__label--dark">недоступно</span>
+    </div>
 @else
     <div class="court-slot"></div>
 @endif
@@ -125,7 +129,7 @@
         <button class="modal__close" type="button" data-close-court="1">×</button>
 
         <div class="modal__header">
-            <div class="modal__title" id="courtBookingTitle">Бронирование корта</div>
+            <div class="modal__title" id="courtBookingTitle">бронирование корта</div>
             <div class="modal__subtitle muted" id="courtBookingSubtitle"></div>
         </div>
 
@@ -138,13 +142,13 @@
                 <input type="hidden" name="time" id="cbTime">
 
                 <div class="modal-grid">
-                    <div class="modal-line"><span class="k">Корт:</span> <span class="v" id="cbRoomName"></span></div>
-                    <div class="modal-line"><span class="k">Дата:</span> <span class="v" id="cbDateText"></span></div>
-                    <div class="modal-line"><span class="k">Время:</span> <span class="v" id="cbTimeText"></span></div>
-                    <div class="modal-line"><span class="k">Цена в час:</span> <span class="v" id="cbPriceHour"></span></div>
+                    <div class="modal-line"><span class="k">корт:</span> <span class="v" id="cbRoomName"></span></div>
+                    <div class="modal-line"><span class="k">дата:</span> <span class="v" id="cbDateText"></span></div>
+                    <div class="modal-line"><span class="k">время:</span> <span class="v" id="cbTimeText"></span></div>
+                    <div class="modal-line"><span class="k">цена в час:</span> <span class="v" id="cbPriceHour"></span></div>
 
                     <div class="field" style="grid-column: 1 / -1;">
-                        <label class="lbl" for="cbPersons">Количество человек</label>
+                        <label class="lbl" for="cbPersons">количество человек</label>
                         <select class="inp" name="persons" id="cbPersons" required>
                             <option value="1">1 человек</option>
                             <option value="2">2 человека</option>
@@ -154,7 +158,7 @@
                     </div>
 
                     <div class="field" style="grid-column: 1 / -1;">
-                        <label class="lbl" for="cbHours">Сколько часов</label>
+                        <label class="lbl" for="cbHours">сколько часов</label>
                         <select class="inp" name="hours" id="cbHours" required>
                             <option value="1">1 час</option>
                             <option value="2">2 часа</option>
@@ -162,12 +166,12 @@
                     </div>
 
                     <div class="modal-line" style="grid-column: 1 / -1;">
-                        <span class="k">Итого:</span>
+                        <span class="k">итого:</span>
                         <span class="v" id="cbTotalPrice">2000 ₽</span>
                     </div>
 
                     <div class="modal-actions" style="grid-column: 1 / -1;">
-                        <button type="submit" class="btn-card btn-card--success">Забронировать</button>
+                        <button type="submit" class="btn-card btn-card--success">забронировать</button>
                     </div>
                 </div>
             </form>

@@ -6,8 +6,10 @@ use App\Models\User;
 use App\Models\Training;
 use App\Models\Room;
 use App\Models\CancellationRequest;
+use App\Models\TrainingTypeSetting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
@@ -25,7 +27,7 @@ class AdminController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()->with('error', 'Некорректные данные');
+            return redirect()->back()->with('error', 'некорректные данные');
         }
 
         $user->role = $request->role;
@@ -38,7 +40,7 @@ class AdminController extends Controller
 
         $user->save();
 
-        return redirect()->back()->with('success', 'Роль пользователя обновлена');
+        return redirect()->back()->with('success', 'роль пользователя обновлена');
     }
 
     public function createTraining()
@@ -83,15 +85,8 @@ class AdminController extends Controller
 
         $rules = $this->getPersonsRules($type);
 
-        // 1) Комнаты по типу
-        $allowedRoomTypes = $this->getAllowedRoomTypesForType($type);
-
-        $roomsQuery = Room::query()
-            ->whereIn('type', $allowedRoomTypes)
-            ->orderBy('type')
-            ->orderBy('name');
-
-        // 2) Если задано date+time — убираем занятые комнаты
+        // 1) Помещения, в которых разрешён выбранный тип тренировки
+        $busyRoomIds = [];
         if ($time) {
             $busyRoomIds = Training::query()
                 ->where('date', $date)
@@ -103,13 +98,21 @@ class AdminController extends Controller
                 ->unique()
                 ->values()
                 ->all();
-
-            if (!empty($busyRoomIds)) {
-                $roomsQuery->whereNotIn('id', $busyRoomIds);
-            }
         }
 
-        $rooms = $roomsQuery->get(['id', 'name', 'type']);
+        $rooms = Room::query()
+            ->orderBy('type')
+            ->orderBy('name')
+            ->get(['id', 'name', 'type'])
+            ->filter(function ($room) use ($type) {
+                return Room::acceptsTrainingType($room, $type);
+            })
+            ->when(!empty($busyRoomIds), function ($collection) use ($busyRoomIds) {
+                return $collection->reject(function ($room) use ($busyRoomIds) {
+                    return in_array($room->id, $busyRoomIds, true);
+                });
+            })
+            ->values();
 
         // 3) Тренеры по специализации
         $needSpec = $this->getSpecializationForType($type);
@@ -213,7 +216,7 @@ class AdminController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()->with('error', 'Проверь данные формы.')->withInput();
+            return redirect()->back()->with('error', 'проверь данные формы.')->withInput();
         }
 
         $date = Carbon::parse($request->date)->format('Y-m-d');
@@ -223,24 +226,22 @@ class AdminController extends Controller
         // тренер обязателен
         $trainer = User::where('id', $request->trainer_id)->where('role', 'trainer')->first();
         if (!$trainer) {
-            return redirect()->back()->with('error', 'Нужно выбрать тренера.')->withInput();
+            return redirect()->back()->with('error', 'нужно выбрать тренера.')->withInput();
         }
 
         // спец под тип
         $needSpec = $this->getSpecializationForType($type);
         if ($trainer->specialization !== $needSpec) {
-            return redirect()->back()->with('error', 'Выбранный тренер не подходит по специализации к типу тренировки.')->withInput();
+            return redirect()->back()->with('error', 'выбранный тренер не подходит по специализации к типу тренировки.')->withInput();
         }
 
         $room = Room::find($request->room_id);
         if (!$room) {
-            return redirect()->back()->with('error', 'Помещение не найдено.')->withInput();
+            return redirect()->back()->with('error', 'помещение не найдено.')->withInput();
         }
 
-        // помещение под тип
-        $allowedRoomTypes = $this->getAllowedRoomTypesForType($type);
-        if (!in_array($room->type, $allowedRoomTypes, true)) {
-            return redirect()->back()->with('error', 'Для выбранного типа тренировки нельзя выбрать это помещение.')->withInput();
+        if (!Room::acceptsTrainingType($room, $type)) {
+            return redirect()->back()->with('error', 'для выбранного типа тренировки нельзя выбрать это помещение.')->withInput();
         }
 
         // persons правила
@@ -251,7 +252,7 @@ class AdminController extends Controller
             $persons = (int)$personsRules['fixed'];
         } else {
             if ($persons < (int)$personsRules['min'] || $persons > (int)$personsRules['max']) {
-                return redirect()->back()->with('error', 'Некорректное количество мест для выбранного типа.')->withInput();
+                return redirect()->back()->with('error', 'некорректное количество мест для выбранного типа.')->withInput();
             }
         }
 
@@ -266,7 +267,7 @@ class AdminController extends Controller
             ->exists();
 
         if ($roomBusy) {
-            return redirect()->back()->with('error', 'В этом помещении на выбранные дату и время уже есть тренировка.')->withInput();
+            return redirect()->back()->with('error', 'в этом помещении на выбранные дату и время уже есть тренировка.')->withInput();
         }
 
         // trainer конфликт
@@ -278,7 +279,7 @@ class AdminController extends Controller
             ->exists();
 
         if ($trainerBusy) {
-            return redirect()->back()->with('error', 'У тренера уже есть тренировка на выбранные дату и время.')->withInput();
+            return redirect()->back()->with('error', 'у тренера уже есть тренировка на выбранные дату и время.')->withInput();
         }
 
         $training = Training::create([
@@ -296,7 +297,7 @@ class AdminController extends Controller
         $training->rooms()->sync([$room->id]);
 
         // удобно: если добавляли из модалки — останешься на календаре
-        return redirect()->back()->with('success', 'Тренировка добавлена.');
+        return redirect()->back()->with('success', 'тренировка добавлена.');
     }
 
     public function cancellations()
@@ -319,7 +320,7 @@ class AdminController extends Controller
             $training->save();
         }
 
-        return redirect()->back()->with('success', 'Отмена подтверждена.');
+        return redirect()->back()->with('success', 'отмена подтверждена.');
     }
 
     public function rejectCancellation(Request $request, CancellationRequest $requestModel)
@@ -328,7 +329,57 @@ class AdminController extends Controller
         $requestModel->admin_comment = $request->input('admin_comment');
         $requestModel->save();
 
-        return redirect()->back()->with('success', 'Отмена отклонена.');
+        return redirect()->back()->with('success', 'отмена отклонена.');
+    }
+
+    public function updateTrainingTypeSetting(Request $request, string $type)
+    {
+        $typesMap = $this->getTypes();
+        if (!array_key_exists($type, $typesMap)) {
+            return redirect()->back()->with('error', 'неизвестный тип тренировки.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'price' => 'required|integer|min:500|max:1000000',
+            'persons_fixed' => 'nullable|integer|min:1|max:200',
+            'persons_min' => 'required|integer|min:1|max:200',
+            'persons_max' => 'required|integer|min:1|max:200',
+            'trainer_ids' => 'nullable|array',
+            'trainer_ids.*' => 'integer|exists:users,id',
+            'weekdays' => 'nullable|array',
+            'weekdays.*' => 'integer|between:1,7',
+            'time_start' => 'required|date_format:H:i',
+            'time_end' => 'required|date_format:H:i',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->with('error', 'проверьте настройки типа тренировки.')->withInput();
+        }
+
+        $start = Carbon::createFromFormat('H:i', $request->time_start);
+        $end = Carbon::createFromFormat('H:i', $request->time_end);
+        if ($end->lessThanOrEqualTo($start)) {
+            return redirect()->back()->with('error', 'время окончания должно быть позже начала.');
+        }
+
+        $trainerIds = collect($request->input('trainer_ids', []))->map(fn ($id) => (int) $id)->filter()->unique()->values()->all();
+        $weekdays = collect($request->input('weekdays', []))->map(fn ($d) => (int) $d)->filter(fn ($d) => $d >= 1 && $d <= 7)->unique()->sort()->values()->all();
+
+        TrainingTypeSetting::updateOrCreate(
+            ['type' => $type],
+            [
+                'price' => (int) $request->price,
+                'persons_fixed' => $request->filled('persons_fixed') ? (int) $request->persons_fixed : null,
+                'persons_min' => (int) $request->persons_min,
+                'persons_max' => (int) $request->persons_max,
+                'trainer_ids' => $trainerIds,
+                'weekdays' => $weekdays ?: [1, 2, 3, 4, 5, 6, 7],
+                'time_start' => $start->format('H:i:s'),
+                'time_end' => $end->format('H:i:s'),
+            ]
+        );
+
+        return redirect()->back()->with('success', 'настройки типа тренировки обновлены.');
     }
 
     private function normalizeTime(string $time): string
@@ -343,13 +394,13 @@ class AdminController extends Controller
     private function getTypes(): array
     {
         return [
-            'individual' => 'Индивидуальная',
-            'split' => 'Сплит',
-            'kids' => 'Детская',
-            'group' => 'Групповая',
-            'fitness' => 'Фитнес',
-            'yoga' => 'Йога',
-            'massage' => 'Массаж'
+            'individual' => 'индивидуальная',
+            'split' => 'сплит',
+            'kids' => 'детская',
+            'group' => 'групповая',
+            'fitness' => 'фитнес',
+            'yoga' => 'йога',
+            'massage' => 'массаж'
         ];
     }
 
@@ -381,25 +432,6 @@ class AdminController extends Controller
         return $typeToSpec[$type] ?? 'tennis_trainer';
     }
 
-    private function getAllowedRoomTypesForType(string $type): array
-    {
-        switch ($type) {
-            case 'yoga':
-                return ['yoga_hall'];
-            case 'massage':
-                return ['massage_room'];
-            case 'fitness':
-                return ['gym', 'group_hall'];
-            case 'group':
-                return ['group_hall'];
-            case 'individual':
-            case 'split':
-            case 'kids':
-            default:
-                return ['tennis_court'];
-        }
-    }
-
     private function getPersonsRules(string $type): array
     {
         if (in_array($type, ['individual', 'kids', 'massage'], true)) {
@@ -415,58 +447,195 @@ class AdminController extends Controller
     }
 
     public function index()
-{
-    $users = User::orderBy('created_at', 'desc')->get();
+    {
+        $users = User::orderBy('created_at', 'desc')->get();
 
-    $rooms = Room::orderBy('type')
-        ->orderBy('name')
-        ->get();
+        $rooms = Room::orderBy('type')
+            ->orderBy('name')
+            ->get();
 
-    $trainings = Training::with(['trainer', 'rooms'])
-        ->orderBy('date', 'desc')
-        ->orderBy('time')
-        ->get();
+        $trainings = Training::with(['trainer', 'rooms'])
+            ->orderBy('date', 'desc')
+            ->orderBy('time')
+            ->get();
 
-    $roles = [
-        'user' => 'Пользователь',
-        'admin' => 'Администратор',
-        'trainer' => 'Тренер',
-    ];
+        $roles = [
+            'user' => 'пользователь',
+            'admin' => 'администратор',
+            'trainer' => 'тренер',
+        ];
 
-    $specializations = [
-        'none' => 'Не указано',
-        'tennis_trainer' => 'Тренер по теннису',
-        'fitness_trainer' => 'Тренер по фитнесу',
-        'yoga_trainer' => 'Тренер по йоге',
-        'masseur' => 'Массажист',
-    ];
+        $specializations = [
+            'none' => 'не указано',
+            'tennis_trainer' => 'тренер по теннису',
+            'fitness_trainer' => 'тренер по фитнесу',
+            'yoga_trainer' => 'тренер по йоге',
+            'masseur' => 'массажист',
+        ];
 
-    $typeNames = [
-        'individual' => 'Индивидуальная',
-        'split' => 'Сплит',
-        'kids' => 'Детская',
-        'group' => 'Групповая',
-        'fitness' => 'Фитнес',
-        'yoga' => 'Йога',
-        'massage' => 'Массаж',
-    ];
+        $typeNames = $this->getTypes();
+        $trainingTypes = $typeNames;
 
-    $roomTypeNames = [
-        'tennis_court' => 'Теннисный корт',
-        'yoga_hall' => 'Зал йоги',
-        'gym' => 'Тренажёрный зал',
-        'group_hall' => 'Групповой зал',
-        'massage_room' => 'Массажный кабинет',
-    ];
+        $roomTypeNames = Room::getRoomTypes();
 
-    return view('admin.index', compact(
-        'users',
-        'rooms',
-        'trainings',
-        'roles',
-        'specializations',
-        'typeNames',
-        'roomTypeNames'
-    ));
-}
+        $weekDayNames = [
+            1 => 'пн',
+            2 => 'вт',
+            3 => 'ср',
+            4 => 'чт',
+            5 => 'пт',
+            6 => 'сб',
+            7 => 'вс',
+        ];
+
+        $trainingTypeSettings = [];
+        foreach (TrainingTypeSetting::query()->orderBy('type')->get() as $row) {
+            $trainingTypeSettings[$row->type] = [
+                'price' => (int) $row->price,
+                'persons_min' => (int) $row->persons_min,
+                'persons_max' => (int) $row->persons_max,
+                'persons_fixed' => $row->persons_fixed !== null ? (int) $row->persons_fixed : null,
+                'trainer_ids' => array_map('intval', $row->trainer_ids ?: []),
+                'weekdays' => $row->weekdays ?: [1, 2, 3, 4, 5, 6, 7],
+                'time_start' => $row->time_start
+                    ? Carbon::parse($row->time_start)->format('H:i')
+                    : '08:00',
+                'time_end' => $row->time_end
+                    ? Carbon::parse($row->time_end)->format('H:i')
+                    : '22:00',
+            ];
+        }
+
+        $trainerList = User::where('role', 'trainer')
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get();
+
+        $trainersByType = [];
+        foreach (array_keys($trainingTypes) as $typeKey) {
+            $needSpec = $this->getSpecializationForType($typeKey);
+            $trainersByType[$typeKey] = $trainerList->where('specialization', $needSpec)->values();
+        }
+
+        $defaultTypeSetting = [
+            'price' => 1000,
+            'persons_min' => 1,
+            'persons_max' => 20,
+            'persons_fixed' => null,
+            'trainer_ids' => [],
+            'weekdays' => [1, 2, 3, 4, 5, 6, 7],
+            'time_start' => '08:00',
+            'time_end' => '22:00',
+        ];
+        foreach (array_keys($trainingTypes) as $typeKey) {
+            $trainingTypeSettings[$typeKey] = array_merge(
+                $defaultTypeSetting,
+                $trainingTypeSettings[$typeKey] ?? []
+            );
+        }
+
+        return view('admin.index', compact(
+            'users',
+            'rooms',
+            'trainings',
+            'roles',
+            'specializations',
+            'typeNames',
+            'trainingTypes',
+            'trainingTypeSettings',
+            'trainersByType',
+            'weekDayNames',
+            'roomTypeNames'
+        ));
+    }
+
+    public function storeRoom(Request $request)
+    {
+        $roomTypeKeys = implode(',', array_keys(Room::getRoomTypes()));
+        $allTrainingTypeKeys = implode(',', array_keys($this->getTypes()));
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'type' => 'required|in:'.$roomTypeKeys,
+            'description' => 'nullable|string|max:5000',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'suitable_training_types' => 'nullable|array',
+            'suitable_training_types.*' => 'in:'.$allTrainingTypeKeys,
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->with('error', 'проверь данные помещения.')->withInput();
+        }
+
+        $allowed = Room::allowedTrainingTypesForRoomType($request->type);
+        $selected = array_values(array_intersect(
+            $allowed,
+            array_map('strval', $request->input('suitable_training_types', []))
+        ));
+        $suitable = count($selected) > 0 ? $selected : null;
+
+        $photo = 'default.jpg';
+        if ($request->hasFile('photo')) {
+            $photo = $request->file('photo')->store('rooms', 'public');
+        }
+
+        Room::create([
+            'name' => $request->name,
+            'type' => $request->type,
+            'description' => $request->description,
+            'photo' => $photo,
+            'suitable_training_types' => $suitable,
+        ]);
+
+        return redirect()->back()->with('success', 'помещение добавлено.');
+    }
+
+    public function updateRoom(Request $request, Room $room)
+    {
+        $roomTypeKeys = implode(',', array_keys(Room::getRoomTypes()));
+        $allTrainingTypeKeys = implode(',', array_keys($this->getTypes()));
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'type' => 'required|in:'.$roomTypeKeys,
+            'description' => 'nullable|string|max:5000',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'remove_photo' => 'nullable|boolean',
+            'suitable_training_types' => 'nullable|array',
+            'suitable_training_types.*' => 'in:'.$allTrainingTypeKeys,
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->with('error', 'проверь данные помещения.')->withInput();
+        }
+
+        $allowed = Room::allowedTrainingTypesForRoomType($request->type);
+        $selected = array_values(array_intersect(
+            $allowed,
+            array_map('strval', $request->input('suitable_training_types', []))
+        ));
+        $suitable = count($selected) > 0 ? $selected : null;
+
+        if ($request->boolean('remove_photo') && $room->photo && $room->photo !== 'default.jpg') {
+            if (Storage::disk('public')->exists($room->photo)) {
+                Storage::disk('public')->delete($room->photo);
+            }
+            $room->photo = 'default.jpg';
+        }
+
+        if ($request->hasFile('photo')) {
+            if ($room->photo && $room->photo !== 'default.jpg' && Storage::disk('public')->exists($room->photo)) {
+                Storage::disk('public')->delete($room->photo);
+            }
+            $room->photo = $request->file('photo')->store('rooms', 'public');
+        }
+
+        $room->name = $request->name;
+        $room->type = $request->type;
+        $room->description = $request->description;
+        $room->suitable_training_types = $suitable;
+        $room->save();
+
+        return redirect()->back()->with('success', 'помещение обновлено.');
+    }
 }

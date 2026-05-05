@@ -13,7 +13,7 @@ class ChildController extends Controller
         $user = Auth::user();
 
         if (!$user || !$user->isUser()) {
-            abort(403, 'Доступ запрещён');
+            abort(403, 'доступ запрещён');
         }
 
         return view('account.children.create');
@@ -24,7 +24,7 @@ class ChildController extends Controller
         $user = Auth::user();
 
         if (!$user || !$user->isUser()) {
-            abort(403, 'Доступ запрещён');
+            abort(403, 'доступ запрещён');
         }
 
         $validated = $request->validate([
@@ -40,7 +40,7 @@ class ChildController extends Controller
 
         return redirect()
             ->route('account')
-            ->with('success', 'Ребёнок успешно добавлен');
+            ->with('success', 'ребёнок успешно добавлен');
     }
 
     public function edit(Child $child)
@@ -48,11 +48,11 @@ class ChildController extends Controller
         $user = Auth::user();
 
         if (!$user || !$user->isUser()) {
-            abort(403, 'Доступ запрещён');
+            abort(403, 'доступ запрещён');
         }
 
         if ((int)$child->user_id !== (int)$user->id) {
-            abort(403, 'Доступ запрещён');
+            abort(403, 'доступ запрещён');
         }
 
         return view('account.children.edit', compact('child'));
@@ -63,11 +63,11 @@ class ChildController extends Controller
         $user = Auth::user();
 
         if (!$user || !$user->isUser()) {
-            abort(403, 'Доступ запрещён');
+            abort(403, 'доступ запрещён');
         }
 
         if ((int)$child->user_id !== (int)$user->id) {
-            abort(403, 'Доступ запрещён');
+            abort(403, 'доступ запрещён');
         }
 
         $validated = $request->validate([
@@ -83,6 +83,6 @@ class ChildController extends Controller
 
         return redirect()
             ->route('account')
-            ->with('success', 'Данные ребёнка обновлены');
+            ->with('success', 'данные ребёнка обновлены');
     }
 }

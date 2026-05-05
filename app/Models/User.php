@@ -12,6 +12,7 @@ use App\Models\UserSubscription;
 use App\Models\Training;
 use App\Models\CourtBooking;
 use App\Models\Child;
+use Illuminate\Support\Facades\Crypt;
 
 class User extends Authenticatable implements CanResetPasswordContract
 {
@@ -35,6 +36,8 @@ class User extends Authenticatable implements CanResetPasswordContract
         'password',
         'remember_token',
         'two_factor_code',
+        'saved_card_number',
+        'saved_card_expiry',
     ];
 
     protected $casts = [
@@ -52,9 +55,9 @@ class User extends Authenticatable implements CanResetPasswordContract
     public function getRoleNameAttribute()
     {
         $roles = [
-            'user'    => 'Пользователь',
-            'admin'   => 'Администратор',
-            'trainer' => 'Тренер',
+            'user'    => 'пользователь',
+            'admin'   => 'администратор',
+            'trainer' => 'тренер',
         ];
 
         return $roles[$this->role] ?? $this->role;
@@ -63,11 +66,11 @@ class User extends Authenticatable implements CanResetPasswordContract
     public function getSpecializationNameAttribute()
     {
         $specializations = [
-            'none'             => 'Нет',
-            'tennis_trainer'   => 'Тренер по теннису',
-            'fitness_trainer'  => 'Тренер по фитнесу',
-            'yoga_trainer'     => 'Тренер по йоге',
-            'masseur'          => 'Массажист',
+            'none'             => 'нет',
+            'tennis_trainer'   => 'тренер по теннису',
+            'fitness_trainer'  => 'тренер по фитнесу',
+            'yoga_trainer'     => 'тренер по йоге',
+            'masseur'          => 'массажист',
         ];
 
         return $specializations[$this->specialization] ?? $this->specialization;
@@ -135,5 +138,33 @@ class User extends Authenticatable implements CanResetPasswordContract
     {
         return $this->hasMany(Child::class, 'user_id')
             ->where('is_active', true);
+    }
+
+    /**
+     * Данные сохранённой карты для автозаполнения формы оплаты (без CVV).
+     */
+    public function savedCardForPaymentModal(): ?array
+    {
+        if (empty($this->saved_card_number) || empty($this->saved_card_expiry)) {
+            return null;
+        }
+
+        try {
+            $digits = Crypt::decryptString($this->saved_card_number);
+            $expiry = Crypt::decryptString($this->saved_card_expiry);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        if (strlen($digits) < 13) {
+            return null;
+        }
+
+        $d = preg_replace('/\D/', '', $digits);
+
+        return [
+            'number' => trim(implode(' ', str_split($d, 4))),
+            'expiry' => $expiry,
+        ];
     }
 }

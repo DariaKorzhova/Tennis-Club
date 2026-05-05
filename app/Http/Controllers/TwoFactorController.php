@@ -48,19 +48,19 @@ class TwoFactorController extends Controller
 
         if (!$user->two_factor_code || !$user->two_factor_expires_at) {
             return redirect()->back()->withErrors([
-                'code' => 'Код не найден. Нажмите "Отправить ещё раз".',
+                'code' => 'код не найден. нажмите "отправить ещё раз".',
             ]);
         }
 
         if (Carbon::parse($user->two_factor_expires_at)->isPast()) {
             return redirect()->back()->withErrors([
-                'code' => 'Код истёк. Нажмите "Отправить ещё раз".',
+                'code' => 'код истёк. нажмите "отправить ещё раз".',
             ]);
         }
 
         if ((string) $request->code !== (string) $user->two_factor_code) {
             return redirect()->back()->withErrors([
-                'code' => 'Неверный код.',
+                'code' => 'неверный код.',
             ]);
         }
 
@@ -74,10 +74,10 @@ class TwoFactorController extends Controller
         $request->session()->forget(['2fa_user_id', '2fa_remember']);
 
         if ($user->role === 'admin') {
-            return redirect()->route('admin.users')->with('success', 'Вход выполнен успешно!');
+            return redirect()->route('admin.users')->with('success', 'вход выполнен успешно!');
         }
 
-        return redirect()->route('account')->with('success', 'Вход выполнен успешно!');
+        return redirect()->route('account')->with('success', 'вход выполнен успешно!');
     }
 
     public function resend(Request $request)
@@ -106,6 +106,6 @@ class TwoFactorController extends Controller
 
         $user->notify(new TwoFactorCodeNotification($code));
 
-        return redirect()->route('2fa.show')->with('status', 'Новый код отправлен на почту.');
+        return redirect()->route('2fa.show')->with('status', 'новый код отправлен на почту.');
     }
 }

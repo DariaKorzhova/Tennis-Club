@@ -24,7 +24,7 @@ class EnsureUserHasActiveSubscription
 
         if (!$subscription || !$subscription->isUsable()) {
             return redirect()->route('subscriptions.choose')
-                ->with('error', 'Сначала нужно оформить активный абонемент.');
+                ->with('error', 'сначала нужно оформить активный абонемент.');
         }
 
         return $next($request);

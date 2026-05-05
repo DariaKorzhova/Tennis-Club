@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CancellationRequest;
 use App\Models\CourtBooking;
 use App\Models\Training;
+use App\Models\TrainingBooking;
 use App\Models\User;
 use App\Notifications\TwoFactorCodeNotification;
 use Carbon\Carbon;
@@ -41,15 +42,96 @@ class AccountController extends Controller
                 'user' => $user,
                 'trainings' => $trainings,
                 'courtBookings' => collect(),
+                'savedCardForModal' => $user->savedCardForPaymentModal(),
             ]);
         }
 
-        $trainings = $user->bookedTrainings()
+        $participantTrainingGroups = collect();
+
+        $activeBookings = TrainingBooking::query()
+            ->with(['training.rooms', 'training.trainer'])
+            ->where('account_user_id', $user->id)
+            ->where('status', 'active')
+            ->get();
+
+        $participantTrainingGroups = $activeBookings
+            ->groupBy(function (TrainingBooking $booking) {
+                return $booking->bookable_type . ':' . (int) $booking->bookable_id;
+            })
+            ->map(function ($bookings) {
+                /** @var TrainingBooking $first */
+                $first = $bookings->first();
+
+                $trainings = $bookings
+                    ->map(function (TrainingBooking $booking) {
+                        $training = $booking->training;
+                        if (!$training) {
+                            return null;
+                        }
+
+                        // Добавляем метаданные брони прямо в объект тренировки для удобного рендера.
+                        $training->booking_meta = $booking;
+                        return $training;
+                    })
+                    ->filter()
+                    ->sortBy(function ($t) {
+                        $time = $t->time ? Carbon::parse($t->time)->format('H:i:s') : '00:00:00';
+                        return ($t->date ?: '0000-00-00') . ' ' . $time;
+                    })
+                    ->values();
+
+                return [
+                    'bookable_type' => $first->bookable_type,
+                    'bookable_id' => (int) $first->bookable_id,
+                    'participant_name' => $first->bookable_name ?: 'участник',
+                    'trainings' => $trainings,
+                ];
+            })
+            ->values();
+
+        // Fallback: старые записи через training_user (если ещё не перенесены).
+        $legacyUserTrainings = $user->bookedTrainings()
             ->wherePivot('status', 'active')
             ->with(['rooms', 'trainer'])
             ->orderBy('date')
             ->orderBy('time')
-            ->get();
+            ->get()
+            ->filter(function ($training) use ($activeBookings, $user) {
+                return !$activeBookings->contains(function (TrainingBooking $booking) use ($training, $user) {
+                    return $booking->bookable_type === 'user'
+                        && (int) $booking->bookable_id === (int) $user->id
+                        && (int) $booking->training_id === (int) $training->id;
+                });
+            })
+            ->values();
+
+        if ($legacyUserTrainings->isNotEmpty()) {
+            $userGroupIndex = $participantTrainingGroups->search(function ($group) use ($user) {
+                return ($group['bookable_type'] ?? null) === 'user'
+                    && (int) ($group['bookable_id'] ?? 0) === (int) $user->id;
+            });
+
+            if ($userGroupIndex === false) {
+                $participantTrainingGroups->push([
+                    'bookable_type' => 'user',
+                    'bookable_id' => (int) $user->id,
+                    'participant_name' => $user->full_name,
+                    'trainings' => $legacyUserTrainings,
+                ]);
+            } else {
+                $existing = collect($participantTrainingGroups[$userGroupIndex]['trainings'] ?? []);
+                $participantTrainingGroups[$userGroupIndex]['trainings'] = $existing
+                    ->merge($legacyUserTrainings)
+                    ->unique('id')
+                    ->sortBy(function ($t) {
+                        $time = $t->time ? Carbon::parse($t->time)->format('H:i:s') : '00:00:00';
+                        return ($t->date ?: '0000-00-00') . ' ' . $time;
+                    })
+                    ->values();
+            }
+        }
+
+        $trainings = collect();
 
         $courtBookings = $user->courtBookings()
             ->with('room')
@@ -68,7 +150,9 @@ class AccountController extends Controller
             })
             ->values();
 
-        return view('account.index', compact('user', 'trainings', 'courtBookings'));
+        $savedCardForModal = $user->savedCardForPaymentModal();
+
+        return view('account.index', compact('user', 'trainings', 'courtBookings', 'participantTrainingGroups', 'savedCardForModal'));
     }
 
     public function edit()
@@ -93,13 +177,13 @@ class AccountController extends Controller
             'crop_y' => ['nullable', 'numeric', 'min:0'],
             'crop_size' => ['nullable', 'numeric', 'min:10'],
         ], [
-            'first_name.regex' => 'Имя должно содержать только русские буквы.',
-            'last_name.regex' => 'Фамилия должна содержать только русские буквы.',
-            'birth_date.date' => 'Укажите корректную дату рождения.',
-            'birth_date.before' => 'Дата рождения должна быть раньше сегодняшнего дня.',
-            'photo.image' => 'Файл должен быть изображением.',
-            'photo.mimes' => 'Фото должно быть в формате jpg, jpeg, png или webp.',
-            'photo.max' => 'Размер фото не должен превышать 4 МБ.',
+            'first_name.regex' => 'имя должно содержать только русские буквы.',
+            'last_name.regex' => 'фамилия должна содержать только русские буквы.',
+            'birth_date.date' => 'укажите корректную дату рождения.',
+            'birth_date.before' => 'дата рождения должна быть раньше сегодняшнего дня.',
+            'photo.image' => 'файл должен быть изображением.',
+            'photo.mimes' => 'фото должно быть в формате jpg, jpeg, png или webp.',
+            'photo.max' => 'размер фото не должен превышать 4 мб.',
         ]);
 
         if ($validator->fails()) {
@@ -127,7 +211,7 @@ class AccountController extends Controller
 
         $user->save();
 
-        return redirect()->route('account')->with('success', 'Данные аккаунта успешно обновлены.');
+        return redirect()->route('account')->with('success', 'данные аккаунта успешно обновлены.');
     }
 
     public function cancelCourtBooking($group)
@@ -143,7 +227,7 @@ class AccountController extends Controller
             ->get();
 
         if ($bookings->isEmpty()) {
-            return back()->with('error', 'Аренда не найдена.');
+            return back()->with('error', 'аренда не найдена.');
         }
 
         foreach ($bookings as $booking) {
@@ -151,7 +235,7 @@ class AccountController extends Controller
             $booking->save();
         }
 
-        return back()->with('success', 'Аренда корта отменена.');
+        return back()->with('success', 'аренда корта отменена.');
     }
 
     public function updateCourtBookingPersons(Request $request, $group)
@@ -162,10 +246,10 @@ class AccountController extends Controller
         $request->validate([
             'persons' => ['required', 'integer', 'min:1', 'max:4'],
         ], [
-            'persons.required' => 'Укажите количество человек.',
-            'persons.integer' => 'Количество человек должно быть числом.',
-            'persons.min' => 'Минимум 1 человек.',
-            'persons.max' => 'Максимум 4 человека.',
+            'persons.required' => 'укажите количество человек.',
+            'persons.integer' => 'количество человек должно быть числом.',
+            'persons.min' => 'минимум 1 человек.',
+            'persons.max' => 'максимум 4 человека.',
         ]);
 
         $bookings = CourtBooking::where('user_id', $user->id)
@@ -176,7 +260,7 @@ class AccountController extends Controller
             ->get();
 
         if ($bookings->isEmpty()) {
-            return back()->with('error', 'Аренда не найдена.');
+            return back()->with('error', 'аренда не найдена.');
         }
 
         foreach ($bookings as $booking) {
@@ -184,7 +268,7 @@ class AccountController extends Controller
             $booking->save();
         }
 
-        return back()->with('success', 'Количество человек обновлено.');
+        return back()->with('success', 'количество человек обновлено.');
     }
 
     public function sendPasswordCode(Request $request)
@@ -195,9 +279,9 @@ class AccountController extends Controller
         $validator = Validator::make($request->all(), [
             'new_password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
-            'new_password.required' => 'Введите новый пароль.',
-            'new_password.min' => 'Пароль должен содержать минимум 8 символов.',
-            'new_password.confirmed' => 'Пароли не совпадают.',
+            'new_password.required' => 'введите новый пароль.',
+            'new_password.min' => 'пароль должен содержать минимум 8 символов.',
+            'new_password.confirmed' => 'пароли не совпадают.',
         ]);
 
         if ($validator->fails()) {
@@ -218,7 +302,7 @@ class AccountController extends Controller
             'password_change_new_password' => $request->new_password,
         ]);
 
-        return back()->with('status', 'Код подтверждения отправлен на вашу почту.');
+        return back()->with('status', 'код подтверждения отправлен на вашу почту.');
     }
 
     public function updatePassword(Request $request)
@@ -229,8 +313,8 @@ class AccountController extends Controller
         $validator = Validator::make($request->all(), [
             'code' => ['required', 'digits:6'],
         ], [
-            'code.required' => 'Введите код подтверждения.',
-            'code.digits' => 'Код должен состоять из 6 цифр.',
+            'code.required' => 'введите код подтверждения.',
+            'code.digits' => 'код должен состоять из 6 цифр.',
         ]);
 
         if ($validator->fails()) {
@@ -242,25 +326,25 @@ class AccountController extends Controller
 
         if (!$sessionUserId || $sessionUserId !== (int) $user->id || !$newPassword) {
             return back()->withErrors([
-                'code' => 'Сначала запросите код подтверждения для смены пароля.',
+                'code' => 'сначала запросите код подтверждения для смены пароля.',
             ]);
         }
 
         if (!$user->two_factor_code || !$user->two_factor_expires_at) {
             return back()->withErrors([
-                'code' => 'Код не найден. Запросите новый код.',
+                'code' => 'код не найден. запросите новый код.',
             ]);
         }
 
         if (Carbon::parse($user->two_factor_expires_at)->isPast()) {
             return back()->withErrors([
-                'code' => 'Срок действия кода истёк. Запросите новый код.',
+                'code' => 'срок действия кода истёк. запросите новый код.',
             ]);
         }
 
         if ((string) $request->code !== (string) $user->two_factor_code) {
             return back()->withErrors([
-                'code' => 'Неверный код подтверждения.',
+                'code' => 'неверный код подтверждения.',
             ]);
         }
 
@@ -275,7 +359,7 @@ class AccountController extends Controller
             'password_change_new_password',
         ]);
 
-        return redirect()->route('account')->with('success', 'Пароль успешно изменён.');
+        return redirect()->route('account')->with('success', 'пароль успешно изменён.');
     }
 
     private function normalizeRussianName(string $value): string

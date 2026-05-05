@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Помещение')
+@section('title', 'помещение')
 
 @section('content')
 <div class="container">
@@ -12,12 +12,12 @@
         @endif
 
         <div class="profile-info">
-            <div><strong>Тип:</strong> {{ \App\Models\Room::getRoomTypes()[$room->type] ?? $room->type }}</div>
+            <div><strong>тип:</strong> {{ \App\Models\Room::getRoomTypes()[$room->type] ?? $room->type }}</div>
             @if($room->season)
-                <div><strong>Сезон:</strong> {{ $room->season }}</div>
+                <div><strong>сезон:</strong> {{ $room->season }}</div>
             @endif
             @if($room->description)
-                <div class="mt"><strong>Описание:</strong> {{ $room->description }}</div>
+                <div class="mt"><strong>описание:</strong> {{ $room->description }}</div>
             @endif
         </div>
     </div>

@@ -16,6 +16,9 @@
 
 body {
     font-family: 'Montserrat';
+    margin: 0;
+    padding-top: 94px;
+    background: #f2f2f2;
 }
 
 a {
@@ -65,15 +68,54 @@ h1 {
    HEADER
    ========================================================= */
 
-nav .menuList {
-    display: flex;
-    justify-content: space-between;
-    font-size: 24;
-    font-weight: 1000px;
-    margin: 36px 0;
+.site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    padding: 10px 0;
+    background: transparent;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
 }
 
+.site-nav .menuList {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px 18px;
+    margin: 0 15;
+    padding: 18px 26px;
+    border-radius: 28px;
+    position: relative;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.807);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
 
+.site-nav .menuList > a {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 700;
+    text-transform: lowercase;
+    transition: opacity 0.2s ease;
+}
+
+.site-nav .menuList > a:hover {
+    opacity: 0.8;
+}
+
+.site-nav .user-info {
+    gap: 10px;
+}
+
+.site-nav .user-role-badge {
+    margin-left: 0;
+}
 
 /* =========================================================
    MAIN PAGE / LEGACY HERO
@@ -209,7 +251,7 @@ nav .menuList {
 
 .alerts-container {
     position: fixed;
-    top: 20px;
+    top: 108px;
     right: 20px;
     z-index: 9999;
     max-width: 400px;
@@ -761,9 +803,11 @@ nav .menuList {
     margin: 0 auto;
     right: 0;
     left: 0;
-    align-items: center;
+    display: flex;
+    align-items: flex-start;
     justify-content: center;
     padding: 18px;
+    overflow-y: auto;
 }
 
 .modal.is-hidden {
@@ -963,9 +1007,9 @@ nav .menuList {
 /* ---------- Shared modal inputs/buttons ---------- */
 
 .input-mini {
-    min-width: 100px;
     height: 36px;
-    margin-top: 10px;
+    margin: 10px 0;
+    width: 100%;
     padding: 0 10px;
     border-radius: 10px;
     border: 1px solid rgba(0, 0, 0, .16);
@@ -1184,7 +1228,6 @@ nav .menuList {
     outline: none;
     background: #fff;
     transition: 0.15s ease;
-    max-width: 20px;
 }
 
 .btn-row .input-mini:focus {
@@ -1412,6 +1455,11 @@ nav .menuList {
     border-color: #ccc;
 }
 
+.form-input.is-invalid {
+    border-color: #c62828;
+    box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.18);
+}
+
 .error-message {
     color: #dc3545;
     font-size: 14px;
@@ -1449,6 +1497,25 @@ nav .menuList {
 
 .form-button:active {
     transform: translateY(0);
+}
+
+.form-button--secondary {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    background-color: var(--white);
+    color: var(--text-dark);
+    border: 2px solid var(--border-color);
+    text-decoration: none;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.form-button--secondary:hover {
+    background-color: var(--background-light);
+    border-color: #bbb;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 .auth-links {
@@ -1536,6 +1603,27 @@ nav .menuList {
     display: inline-block;
     text-align: center;
     min-width: 80px;
+}
+
+@media (max-width: 1200px) {
+    body {
+        padding-top: 94px;
+    }
+
+    .site-nav .menuList > a {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 860px) {
+    body {
+        padding-top: 110px;
+    }
+
+    .site-nav .menuList {
+        padding: 14px 18px;
+        border-radius: 22px;
+    }
 }
 
 .logout-btn:hover {
@@ -2270,8 +2358,12 @@ nav .menuList {
 
 .account-list {
     margin-top: 14px;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    
+}
+
+.js-training-participant-group {
+    display: flex;
+    flex-wrap: wrap;
     gap: 14px;
 }
 
@@ -2369,13 +2461,13 @@ nav .menuList {
     justify-content: center;
     padding: 12px 18px;
     border-radius: 14px;
-    font-weight: 800;
+    font-weight: 600;
     transition: 0.2s ease;
 }
 
 .account-edit-btn {
     background: var(--primary-color);
-    color: var(--text-dark);
+    border: 0px solid black;
 }
 
 .account-edit-btn:hover {
@@ -2391,6 +2483,34 @@ nav .menuList {
 
 .account-secondary-btn:hover {
     background: var(--background-light);
+}
+
+/* кнопка взноса по рассрочке — отдельный акцент от основной (лайм) */
+.account-installment-pay-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 20px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    border: 2px solid #14805a;
+    background: linear-gradient(180deg, #e9f7f1 0%, #d4efe4 100%);
+    color: #0a4d36;
+    box-shadow: 0 2px 8px rgba(10, 77, 54, 0.12);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.account-installment-pay-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(10, 77, 54, 0.2);
+    filter: brightness(1.03);
+}
+
+.account-installment-pay-btn:active {
+    transform: translateY(0);
 }
 
 .account-edit-shell {
@@ -2834,6 +2954,117 @@ nav .menuList {
     margin-top: 30px;
 }
 
+.subscription-page--narrow {
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.subscription-verify-lead {
+    margin-top: 14px;
+    line-height: 1.55;
+}
+
+.subscription-verify-form {
+    margin-top: 22px;
+}
+
+.subscription-verify-code {
+    display: block;
+    width: 100%;
+    max-width: 220px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 22px;
+    letter-spacing: 0.35em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.modal__dialog--subscription-pay {
+    max-width: 480px;
+    max-height: min(90vh, 720px);
+    overflow-y: auto;
+}
+
+.subscription-pay-sep {
+    border: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    margin: 18px 0 14px;
+}
+
+.subscription-pay-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--background-light, #f5f5f5);
+    border: 1px solid var(--border-color);
+}
+
+.subscription-pay-total__label {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-light, #666);
+}
+
+.subscription-pay-total__value {
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--text-dark);
+    white-space: nowrap;
+}
+
+.subscription-verify-back {
+    margin-top: 18px;
+}
+
+.subscription-pay-billing .form-label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.subscription-pay-radio-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    align-items: center;
+}
+
+.form-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.form-radio input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary, #065aba);
+}
+
+.subscription-pay-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.subscription-pay-grid--full {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 520px) {
+    .subscription-pay-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .subscription-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2867,13 +3098,42 @@ nav .menuList {
     font-size: 24px;
     font-weight: 900;
     color: var(--text-dark);
+    list-style: none;
 }
 
 .subscription-card__list {
     margin: 16px 0;
-    padding-left: 18px;
+    padding-left: 0;
     color: var(--text-dark);
     line-height: 1.6;
+    list-style: none;
+
+}
+
+.subscription-card__list li {
+    padding: 5px 15px;
+    width: fit-content;
+    border: 1px solid black;
+    border-radius: 40px;
+    margin-bottom: 7px;
+}
+
+.subscription-card__list li:first-child {
+    color: #065aba;
+    background-color: #337ed325;
+    border-color: #0554ae;
+}
+
+.subscription-card__list li:nth-child(2) {
+    color: #03b922;
+    background-color: #07e22b23;
+    border-color: #07e22b;
+}
+
+.subscription-card__list li:nth-child(3) {
+    color: #8e0493;
+    background-color: #c926cf2e;
+    border-color: #8e0493;
 }
 
 @media (max-width: 980px) {
@@ -3083,7 +3343,6 @@ nav .menuList {
 }
 
 .account-form .form-actions .account-edit-btn {
-    border: 2px solid var(--primary-color);
     cursor: pointer;
     font-family: 'Montserrat', sans-serif;
     font-size: 15px;
@@ -3092,7 +3351,6 @@ nav .menuList {
 
 .account-form .form-actions a.account-edit-btn {
     background: var(--white);
-    border-color: var(--border-color);
 }
 
 .account-form .form-actions a.account-edit-btn:hover {
@@ -3224,6 +3482,60 @@ nav .menuList {
 
 .admin-courts-grid {
     margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.admin-court-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+}
+
+.admin-court-card h3 {
+    margin: 0 0 8px;
+    color: var(--text-dark);
+}
+
+.admin-room-form {
+    display: grid;
+    gap: 14px;
+}
+
+.admin-room-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.admin-room-grid textarea.inp {
+    min-height: 96px;
+    resize: vertical;
+}
+
+.admin-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.admin-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.court-slot--na {
+    background: rgba(0, 0, 0, 0.08);
+    border: 1px dashed rgba(0, 0, 0, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 @media (max-width: 980px) {
@@ -3241,5 +3553,23 @@ nav .menuList {
 
     .users-table {
         min-width: 900px;
+    }
+
+    .admin-room-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-checkboxes {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .admin-courts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .admin-checkboxes {
+        grid-template-columns: 1fr;
     }
 }

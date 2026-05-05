@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Регистрация')
+@section('title', 'регистрация')
 
 @section('content')
 <div class="auth-container">
     <div class="auth-header">
-        <h3>Регистрация</h3>
+        <h3>регистрация</h3>
     </div>
 
     @if ($errors->any())
@@ -22,7 +22,7 @@
         @csrf
 
         <div class="form-group @error('first_name') has-error @enderror">
-            <label for="first_name" class="form-label">Имя</label>
+            <label for="first_name" class="form-label">имя</label>
             <input
                 type="text"
                 class="form-input"
@@ -38,7 +38,7 @@
         </div>
 
         <div class="form-group @error('last_name') has-error @enderror">
-            <label for="last_name" class="form-label">Фамилия</label>
+            <label for="last_name" class="form-label">фамилия</label>
             <input
                 type="text"
                 class="form-input"
@@ -68,7 +68,7 @@
         </div>
 
         <div class="form-group @error('birth_date') has-error @enderror">
-            <label for="birth_date" class="form-label">Дата рождения</label>
+            <label for="birth_date" class="form-label">дата рождения</label>
             <input
                 type="text"
                 class="form-input"
@@ -85,7 +85,7 @@
         </div>
 
         <div class="form-group @error('password') has-error @enderror">
-            <label for="password" class="form-label">Пароль</label>
+            <label for="password" class="form-label">пароль</label>
             <input
                 type="password"
                 class="form-input password-toggle-field"
@@ -100,7 +100,7 @@
         </div>
 
         <div class="form-group @error('password_confirmation') has-error @enderror">
-            <label for="password_confirmation" class="form-label">Подтвердите пароль</label>
+            <label for="password_confirmation" class="form-label">подтвердите пароль</label>
             <input
                 type="password"
                 class="form-input password-toggle-field"
@@ -116,14 +116,14 @@
 
         <div class="form-checkbox" style="margin-bottom: 16px;">
             <input type="checkbox" class="checkbox-input" id="show_passwords">
-            <label class="checkbox-label" for="show_passwords">Показать пароль</label>
+            <label class="checkbox-label" for="show_passwords">показать пароль</label>
         </div>
 
-        <button type="submit" class="form-button">Зарегистрироваться</button>
+        <button type="submit" class="form-button">зарегистрироваться</button>
     </form>
 
     <div class="auth-links">
-        <p>Уже есть аккаунт? <a href="{{ route('login') }}" class="auth-link">Войти</a></p>
+        <p>уже есть аккаунт? <a href="{{ route('login') }}" class="auth-link">войти</a></p>
     </div>
 </div>
 

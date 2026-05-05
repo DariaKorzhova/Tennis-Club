@@ -25,11 +25,11 @@ class TwoFactorCodeNotification extends Notification
     public function toMail($notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Код подтверждения входа — TennisClub')
-            ->greeting('Здравствуйте!')
-            ->line('Для входа в аккаунт используйте этот код подтверждения:')
+            ->subject('код подтверждения входа — tennisclub')
+            ->greeting('здравствуйте!')
+            ->line('для входа в аккаунт используйте этот код подтверждения:')
             ->line($this->code)
-            ->line('Код действует 10 минут.')
-            ->line('Если это были не вы, просто проигнорируйте это письмо.');
+            ->line('код действует 10 минут.')
+            ->line('если это были не вы, просто проигнорируйте это письмо.');
     }
 }

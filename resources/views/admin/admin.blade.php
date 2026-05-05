@@ -1,25 +1,25 @@
 @extends('layouts.app')
 
-@section('title', 'Админ-панель')
+@section('title', 'админ-панель')
 
 @section('content')
 <div class="container">
-    <h1 class="section-title">Админ-панель</h1>
+    <h1 class="section-title">админ-панель</h1>
 
     <div class="account-layout admin-layout">
 
         <div class="account-content">
 
-            {{-- РЕДАКТИРОВАТЬ ПОМЕЩЕНИЯ --}}
+            {{-- редактировать помещения --}}
             <section id="admin-rooms" class="account-panel is-active">
                 <div class="admin-section-header">
                     <div>
-                        <h2>Редактировать помещения</h2>
-                        <p class="admin-subtitle">Управление залами, кабинетами и другими помещениями клуба</p>
+                        <h2>редактировать помещения</h2>
+                        <p class="admin-subtitle">управление залами, кабинетами и другими помещениями клуба</p>
                     </div>
 
                     @if(\Illuminate\Support\Facades\Route::has('admin.rooms.create'))
-                        <a href="{{ route('admin.rooms.create') }}" class="account-edit-btn">Добавить помещение</a>
+                        <a href="{{ route('admin.rooms.create') }}" class="account-edit-btn">добавить помещение</a>
                     @endif
                 </div>
 
@@ -28,10 +28,10 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Название</th>
-                                <th>Тип</th>
-                                <th>Описание</th>
-                                <th>Действия</th>
+                                <th>название</th>
+                                <th>тип</th>
+                                <th>описание</th>
+                                <th>действия</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -48,14 +48,14 @@
                                     <td>
                                         <div class="admin-table-actions">
                                             @if(\Illuminate\Support\Facades\Route::has('admin.rooms.edit'))
-                                                <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn-save">Редактировать</a>
+                                                <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn-save">редактировать</a>
                                             @endif
 
                                             @if(\Illuminate\Support\Facades\Route::has('admin.rooms.destroy'))
-                                                <form method="POST" action="{{ route('admin.rooms.destroy', $room->id) }}" data-confirm="Удалить помещение?">
+                                                <form method="POST" action="{{ route('admin.rooms.destroy', $room->id) }}" data-confirm="удалить помещение?">
                                                     @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn-cancel">Удалить</button>
+                                                    @method('delete')
+                                                    <button type="submit" class="btn-cancel">удалить</button>
                                                 </form>
                                             @endif
                                         </div>
@@ -63,7 +63,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-muted">Помещения пока не добавлены.</td>
+                                    <td colspan="5" class="text-muted">помещения пока не добавлены.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -72,21 +72,21 @@
             </section>
 
 
-            {{-- РЕДАКТИРОВАТЬ ТРЕНИРОВКИ --}}
+            {{-- редактировать тренировки --}}
             <section id="admin-trainings" class="account-panel">
                 <div class="admin-section-header">
                     <div>
-                        <h2>Редактировать тренировки</h2>
-                        <p class="admin-subtitle">Создание, просмотр и управление расписанием тренировок</p>
+                        <h2>редактировать тренировки</h2>
+                        <p class="admin-subtitle">создание, просмотр и управление расписанием тренировок</p>
                     </div>
 
                     <div class="admin-header-actions">
                         @if(\Illuminate\Support\Facades\Route::has('admin.trainings.create'))
-                            <a href="{{ route('admin.trainings.create') }}" class="account-edit-btn">Добавить тренировку</a>
+                            <a href="{{ route('admin.trainings.create') }}" class="account-edit-btn">добавить тренировку</a>
                         @endif
 
                         @if(\Illuminate\Support\Facades\Route::has('admin.cancellations'))
-                            <a href="{{ route('admin.cancellations') }}" class="account-secondary-btn">Запросы отмены</a>
+                            <a href="{{ route('admin.cancellations') }}" class="account-secondary-btn">запросы отмены</a>
                         @endif
                     </div>
                 </div>
@@ -96,13 +96,13 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Дата</th>
-                                <th>Время</th>
-                                <th>Тип</th>
-                                <th>Тренер</th>
-                                <th>Помещение</th>
-                                <th>Цена</th>
-                                <th>Статус</th>
+                                <th>дата</th>
+                                <th>время</th>
+                                <th>тип</th>
+                                <th>тренер</th>
+                                <th>помещение</th>
+                                <th>цена</th>
+                                <th>статус</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -120,15 +120,15 @@
                                     <td>{{ (int)$training->price }} ₽</td>
                                     <td>
                                         @if($training->is_cancelled)
-                                            <span class="badge badge--cancelled">Отменена</span>
+                                            <span class="badge badge--cancelled">отменена</span>
                                         @else
-                                            <span class="badge">Активна</span>
+                                            <span class="badge">активна</span>
                                         @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-muted">Тренировки пока не добавлены.</td>
+                                    <td colspan="8" class="text-muted">тренировки пока не добавлены.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -137,12 +137,12 @@
             </section>
 
 
-            {{-- РЕДАКТИРОВАТЬ ПОЛЬЗОВАТЕЛЕЙ --}}
+            {{-- редактировать пользователей --}}
             <section id="admin-users" class="account-panel">
                 <div class="admin-section-header">
                     <div>
-                        <h2>Редактировать пользователей</h2>
-                        <p class="admin-subtitle">Всего пользователей: {{ $users->count() }}</p>
+                        <h2>редактировать пользователей</h2>
+                        <p class="admin-subtitle">всего пользователей: {{ $users->count() }}</p>
                     </div>
                 </div>
 
@@ -151,13 +151,13 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Имя</th>
+                                <th>имя</th>
                                 <th>Email</th>
-                                <th>Возраст</th>
-                                <th>Роль</th>
-                                <th>Специализация</th>
-                                <th>Дата регистрации</th>
-                                <th>Действия</th>
+                                <th>возраст</th>
+                                <th>роль</th>
+                                <th>специализация</th>
+                                <th>дата регистрации</th>
+                                <th>действия</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -215,37 +215,37 @@
 
                 <div class="admin-stats">
                     <div class="stat-card">
-                        <h3>Статистика по ролям</h3>
+                        <h3>статистика по ролям</h3>
                         <ul class="stats-list">
-                            <li>Пользователей: {{ $users->where('role', 'user')->count() }}</li>
-                            <li>Администраторов: {{ $users->where('role', 'admin')->count() }}</li>
-                            <li>Тренеров: {{ $users->where('role', 'trainer')->count() }}</li>
+                            <li>пользователей: {{ $users->where('role', 'user')->count() }}</li>
+                            <li>администраторов: {{ $users->where('role', 'admin')->count() }}</li>
+                            <li>тренеров: {{ $users->where('role', 'trainer')->count() }}</li>
                         </ul>
                     </div>
 
                     <div class="stat-card">
-                        <h3>Статистика по специализациям</h3>
+                        <h3>статистика по специализациям</h3>
                         <ul class="stats-list">
-                            <li>Тренеры по теннису: {{ $users->where('specialization', 'tennis_trainer')->count() }}</li>
-                            <li>Тренеры по фитнесу: {{ $users->where('specialization', 'fitness_trainer')->count() }}</li>
-                            <li>Тренеры по йоге: {{ $users->where('specialization', 'yoga_trainer')->count() }}</li>
-                            <li>Массажисты: {{ $users->where('specialization', 'masseur')->count() }}</li>
+                            <li>тренеры по теннису: {{ $users->where('specialization', 'tennis_trainer')->count() }}</li>
+                            <li>тренеры по фитнесу: {{ $users->where('specialization', 'fitness_trainer')->count() }}</li>
+                            <li>тренеры по йоге: {{ $users->where('specialization', 'yoga_trainer')->count() }}</li>
+                            <li>массажисты: {{ $users->where('specialization', 'masseur')->count() }}</li>
                         </ul>
                     </div>
                 </div>
             </section>
 
 
-            {{-- РЕДАКТИРОВАТЬ КОРТЫ --}}
+            {{-- редактировать корты --}}
             <section id="admin-courts" class="account-panel">
                 <div class="admin-section-header">
                     <div>
-                        <h2>Редактировать корты</h2>
-                        <p class="admin-subtitle">Отдельный раздел для управления теннисными кортами</p>
+                        <h2>редактировать корты</h2>
+                        <p class="admin-subtitle">отдельный раздел для управления теннисными кортами</p>
                     </div>
 
                     @if(\Illuminate\Support\Facades\Route::has('admin.rooms.create'))
-                        <a href="{{ route('admin.rooms.create', ['type' => 'tennis_court']) }}" class="account-edit-btn">Добавить корт</a>
+                        <a href="{{ route('admin.rooms.create', ['type' => 'tennis_court']) }}" class="account-edit-btn">добавить корт</a>
                     @endif
                 </div>
 
@@ -257,26 +257,26 @@
                             @endif
 
                             <h3>{{ $court->name }}</h3>
-                            <p>{{ $court->description ?? 'Описание не указано' }}</p>
+                            <p>{{ $court->description ?? 'описание не указано' }}</p>
 
                             <div class="admin-card-actions">
                                 @if(\Illuminate\Support\Facades\Route::has('admin.rooms.edit'))
                                     <a href="{{ route('admin.rooms.edit', $court->id) }}" class="account-edit-btn">
-                                        Редактировать
+                                        редактировать
                                     </a>
                                 @endif
 
                                 @if(\Illuminate\Support\Facades\Route::has('admin.rooms.destroy'))
-                                    <form method="POST" action="{{ route('admin.rooms.destroy', $court->id) }}" data-confirm="Удалить корт?">
+                                    <form method="POST" action="{{ route('admin.rooms.destroy', $court->id) }}" data-confirm="удалить корт?">
                                         @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="account-secondary-btn">Удалить</button>
+                                        @method('delete')
+                                        <button type="submit" class="account-secondary-btn">удалить</button>
                                     </form>
                                 @endif
                             </div>
                         </div>
                     @empty
-                        <div class="muted">Корты пока не добавлены.</div>
+                        <div class="muted">корты пока не добавлены.</div>
                     @endforelse
                 </div>
             </section>
@@ -284,24 +284,24 @@
         </div>
 
 
-        {{-- БОКОВОЕ МЕНЮ --}}
+        {{-- боковое меню --}}
         <aside class="account-sidebar">
-            <div class="account-sidebar__title">Админ-панель</div>
+            <div class="account-sidebar__title">админ-панель</div>
 
             <button type="button" class="account-sidebar__link js-admin-tab is-active" data-tab="admin-rooms">
-                Редактировать помещения
+                редактировать помещения
             </button>
 
             <button type="button" class="account-sidebar__link js-admin-tab" data-tab="admin-trainings">
-                Редактировать тренировки
+                редактировать тренировки
             </button>
 
             <button type="button" class="account-sidebar__link js-admin-tab" data-tab="admin-users">
-                Редактировать пользователей
+                редактировать пользователей
             </button>
 
             <button type="button" class="account-sidebar__link js-admin-tab" data-tab="admin-courts">
-                Редактировать корты
+                редактировать корты
             </button>
         </aside>
 

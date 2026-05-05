@@ -38,6 +38,11 @@ class Training extends Model
             ->withTimestamps();
     }
 
+    public function bookings()
+    {
+        return $this->hasMany(TrainingBooking::class, 'training_id');
+    }
+
     public function cancellationRequests()
     {
         return $this->hasMany(CancellationRequest::class);
@@ -49,10 +54,10 @@ class Training extends Model
             'individual' => 'tennis_court',
             'split' => 'tennis_court',
             'kids' => 'tennis_court',
-            'group' => 'group_hall',
+            'group' => 'tennis_court',
             'fitness' => 'gym',
             'yoga' => 'yoga_hall',
-            'massage' => 'massage_room'
+            'massage' => 'massage_room',
         ];
 
         return $mapping[$trainingType] ?? 'tennis_court';

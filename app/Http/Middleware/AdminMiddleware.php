@@ -15,7 +15,7 @@ class AdminMiddleware
         }
 
         if (Auth::user()->role !== 'admin') {
-            return redirect()->route('home')->with('error', 'Доступ запрещен');
+            return redirect()->route('home')->with('error', 'доступ запрещен');
         }
 
         return $next($request);

@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Восстановление пароля')
+@section('title', 'восстановление пароля')
 
 @section('content')
 <div class="auth-container">
     <div class="auth-header">
-        <h3>Восстановление пароля</h3>
+        <h3>восстановление пароля</h3>
     </div>
 
     @if (session('status'))
@@ -25,11 +25,11 @@
             @enderror
         </div>
 
-        <button type="submit" class="form-button">Отправить ссылку</button>
+        <button type="submit" class="form-button">отправить ссылку</button>
     </form>
 
     <div class="auth-links">
-        <p><a href="{{ route('login') }}" class="auth-link">Назад ко входу</a></p>
+        <p><a href="{{ route('login') }}" class="auth-link">назад ко входу</a></p>
     </div>
 </div>
 @endsection

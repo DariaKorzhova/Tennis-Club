@@ -9,48 +9,48 @@
     <title>TheRiverSide - @yield('title')</title>
 </head>
 <body>
-    <header>
+    <header class="site-header">
         <div class="container">
-          <nav>
-            <div class="menuList">
-                <a href="{{route('home')}}">главная</a>
-                <a href="{{route('rooms.show')}}">корты</a>
-                <a href="{{route('trainings.show')}}">тренировки</a>
-                <a href="{{ route('court-rent.index') }}">аренда кортов</a>
+            <nav class="site-nav">
+                <div class="menuList">
+                    <a href="{{route('home')}}">главная</a>
+                    <a href="{{route('rooms.show')}}">корты</a>
+                    <a href="{{route('trainings.show')}}">тренировки</a>
+                    <a href="{{ route('court-rent.index') }}">аренда кортов</a>
 
-            @auth
-                @if(Auth::user()->role === 'admin')
-                    <a href="{{ route('admin.panel') }}">админ-панель</a>
-                @endif
+                    @auth
+                        @if(Auth::user()->role === 'admin')
+                            <a href="{{ route('admin.panel') }}">админ-панель</a>
+                        @endif
 
-                @if(in_array(Auth::user()->role, ['user','trainer']))
-                    <a href="{{ route('account') }}">мой аккаунт</a>
-                @endif
+                        @if(in_array(Auth::user()->role, ['user','trainer']))
+                            <a href="{{ route('account') }}">мой аккаунт</a>
+                        @endif
 
-                @if(in_array(Auth::user()->role, ['admin', 'trainer']))
-                    <div class="user-info">
-                        <span class="user-role-badge {{ Auth::user()->role }}">
-                            {{ Auth::user()->role_name }}
-                        </span>
+                        @if(in_array(Auth::user()->role, ['admin', 'trainer']))
+                            <div class="user-info">
+                                <span class="user-role-badge {{ Auth::user()->role }}">
+                                    {{ Auth::user()->role_name }}
+                                </span>
 
-                        <form method="POST" action="{{ route('logout') }}" class="logout-form">
-                            @csrf
-                            <button type="submit" class="logout-btn">выйти</button>
-                        </form>
-                    </div>
-                @else
-                    <form method="POST" action="{{ route('logout') }}" class="logout-form">
-                        @csrf
-                        <button type="submit" class="logout-btn">выйти</button>
-                    </form>
-                @endif
+                                <form method="POST" action="{{ route('logout') }}" class="logout-form">
+                                    @csrf
+                                    <button type="submit" class="logout-btn">выйти</button>
+                                </form>
+                            </div>
+                        @else
+                            <form method="POST" action="{{ route('logout') }}" class="logout-form">
+                                @csrf
+                                <button type="submit" class="logout-btn">выйти</button>
+                            </form>
+                        @endif
 
-            @else
-                <a href="{{ route('login') }}">вход</a>
-                <a href="{{ route('register') }}">регистрация</a>
-            @endauth
-            </div>
-          </nav>
+                    @else
+                        <a href="{{ route('login') }}">вход</a>
+                        <a href="{{ route('register') }}">регистрация</a>
+                    @endauth
+                </div>
+            </nav>
         </div>
     </header>
 
@@ -79,48 +79,48 @@
     <footer></footer>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const alertsContainer = document.querySelector('.alerts-container');
-            const alerts = document.querySelectorAll('.alert');
+        document.addeventlistener('domcontentloaded', function() {
+            const alertscontainer = document.queryselector('.alerts-container');
+            const alerts = document.queryselectorall('.alert');
 
-            function closeAlert(alert) {
-                alert.classList.add('hiding');
-                setTimeout(() => {
+            function closealert(alert) {
+                alert.classlist.add('hiding');
+                settimeout(() => {
                     alert.remove();
-                    if (alertsContainer && alertsContainer.children.length === 0) {
-                        alertsContainer.style.display = 'none';
+                    if (alertscontainer && alertscontainer.children.length === 0) {
+                        alertscontainer.style.display = 'none';
                     }
                 }, 300);
             }
 
-            document.querySelectorAll('.alert-close').forEach(button => {
-                button.addEventListener('click', function() {
+            document.queryselectorall('.alert-close').foreach(button => {
+                button.addeventlistener('click', function() {
                     const alert = this.closest('.alert');
-                    closeAlert(alert);
+                    closealert(alert);
                 });
             });
 
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    if (alert.parentElement) {
-                        closeAlert(alert);
+            alerts.foreach(alert => {
+                settimeout(() => {
+                    if (alert.parentelement) {
+                        closealert(alert);
                     }
                 }, 5000);
             });
 
-            alerts.forEach(alert => {
-                alert.addEventListener('click', function(e) {
-                    if (!e.target.classList.contains('alert-close')) {
-                        closeAlert(this);
+            alerts.foreach(alert => {
+                alert.addeventlistener('click', function(e) {
+                    if (!e.target.classlist.contains('alert-close')) {
+                        closealert(this);
                     }
                 });
             });
 
-            document.querySelectorAll('form[data-confirm]').forEach(function(form) {
-                form.addEventListener('submit', function(e) {
-                    const message = form.getAttribute('data-confirm') || 'Подтвердить действие?';
+            document.queryselectorall('form[data-confirm]').foreach(function(form) {
+                form.addeventlistener('submit', function(e) {
+                    const message = form.getattribute('data-confirm') || 'подтвердить действие?';
                     if (!window.confirm(message)) {
-                        e.preventDefault();
+                        e.preventdefault();
                     }
                 });
             });

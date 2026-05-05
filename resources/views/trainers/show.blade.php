@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Тренер')
+@section('title', 'тренер')
 
 @section('content')
 <div class="container">
@@ -12,9 +12,9 @@
         @endif
 
         <div class="profile-info">
-            <div><strong>Специализация:</strong> {{ $trainer->specialization_name }}</div>
+            <div><strong>специализация:</strong> {{ $trainer->specialization_name }}</div>
             @if($trainer->age)
-                <div><strong>Возраст:</strong> {{ $trainer->age }}</div>
+                <div><strong>возраст:</strong> {{ $trainer->age }}</div>
             @endif
         </div>
     </div>

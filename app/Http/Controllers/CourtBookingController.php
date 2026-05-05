@@ -120,7 +120,7 @@ class CourtBookingController extends Controller
                 ->exists();
 
             if ($trainingExists) {
-                return back()->with('error', 'Корт занят тренировкой в выбранное время.');
+                return back()->with('error', 'корт занят тренировкой в выбранное время.');
             }
 
             $bookingExists = CourtBooking::where('room_id', $room->id)
@@ -130,7 +130,7 @@ class CourtBookingController extends Controller
                 ->exists();
 
             if ($bookingExists) {
-                return back()->with('error', 'Корт уже забронирован в выбранное время.');
+                return back()->with('error', 'корт уже забронирован в выбранное время.');
             }
         }
 
@@ -152,7 +152,7 @@ class CourtBookingController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Корт успешно забронирован. Итоговая стоимость: ' . $totalPrice . ' ₽');
+        return back()->with('success', 'корт успешно забронирован. итоговая стоимость: ' . $totalPrice . ' ₽');
     }
 
     private function prepareCalendarData($court, $bookings, $courtTrainings, $myTrainings, Carbon $startDate)
@@ -160,23 +160,23 @@ class CourtBookingController extends Controller
         $today = Carbon::today();
 
         $typeNames = [
-            'individual' => 'Индивидуальная',
-            'split' => 'Сплит',
-            'kids' => 'Детская',
-            'group' => 'Групповая',
-            'fitness' => 'Фитнес',
-            'yoga' => 'Йога',
-            'massage' => 'Массаж',
+            'individual' => 'индивидуальная',
+            'split' => 'сплит',
+            'kids' => 'детская',
+            'group' => 'групповая',
+            'fitness' => 'фитнес',
+            'yoga' => 'йога',
+            'massage' => 'массаж',
         ];
 
         $dayNames = [
-            1 => 'ПН',
-            2 => 'ВТ',
-            3 => 'СР',
-            4 => 'ЧТ',
-            5 => 'ПТ',
-            6 => 'СБ',
-            7 => 'ВС',
+            1 => 'пн',
+            2 => 'вт',
+            3 => 'ср',
+            4 => 'чт',
+            5 => 'пт',
+            6 => 'сб',
+            7 => 'вс',
         ];
 
         $times = [];
@@ -222,7 +222,7 @@ class CourtBookingController extends Controller
                     'date' => $training->date,
                     'time' => $time,
                     'training_id' => $training->id,
-                    'trainer_name' => $training->trainer ? $training->trainer->full_name : 'Не назначен',
+                    'trainer_name' => $training->trainer ? $training->trainer->full_name : 'не назначен',
                     'type_name' => $training->type,
                     'type_label' => $typeNames[$training->type] ?? $training->type,
                 ];
@@ -243,10 +243,10 @@ class CourtBookingController extends Controller
                     'date' => $training->date,
                     'time' => $time,
                     'training_id' => $training->id,
-                    'trainer_name' => $training->trainer ? $training->trainer->full_name : 'Не назначен',
+                    'trainer_name' => $training->trainer ? $training->trainer->full_name : 'не назначен',
                     'type_name' => $training->type,
                     'type_label' => $typeNames[$training->type] ?? $training->type,
-                    'training_room_name' => $room ? $room->name : 'Другое помещение',
+                    'training_room_name' => $room ? $room->name : 'другое помещение',
                 ];
             }
         }

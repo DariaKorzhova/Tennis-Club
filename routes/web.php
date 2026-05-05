@@ -76,7 +76,13 @@ Route::middleware(['auth'])->group(function () {
         ->name('trainings.request_cancel');
 
     Route::get('/subscriptions/choose', [SubscriptionController::class, 'choose'])->name('subscriptions.choose');
-    Route::post('/subscriptions/store', [SubscriptionController::class, 'store'])->name('subscriptions.store');
+    Route::get('/subscriptions/all', [SubscriptionController::class, 'index'])->name('subscriptions.index');
+    Route::post('/subscriptions/payment/init', [SubscriptionController::class, 'paymentInit'])->name('subscriptions.payment.init');
+    Route::get('/subscriptions/payment/verify', [SubscriptionController::class, 'paymentVerify'])->name('subscriptions.payment.verify');
+    Route::post('/subscriptions/payment/complete', [SubscriptionController::class, 'paymentComplete'])->name('subscriptions.payment.complete');
+    Route::post('/subscriptions/installment-payment/init', [SubscriptionController::class, 'installmentPaymentInit'])->name('subscriptions.installment-payment.init');
+    Route::get('/subscriptions/installment-payment/verify', [SubscriptionController::class, 'installmentPaymentVerify'])->name('subscriptions.installment-payment.verify');
+    Route::post('/subscriptions/installment-payment/complete', [SubscriptionController::class, 'installmentPaymentComplete'])->name('subscriptions.installment-payment.complete');
     Route::get('/subscriptions/history', [SubscriptionController::class, 'history'])->name('subscriptions.history');
 
     Route::get('/account/children/create', [ChildController::class, 'create'])->name('account.children.create');
@@ -88,6 +94,9 @@ Route::middleware(['auth'])->group(function () {
 /* ---------- ADMIN ---------- */
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('admin.panel');
+    Route::post('/rooms', [AdminController::class, 'storeRoom'])->name('admin.rooms.store');
+    Route::post('/rooms/{room}/update', [AdminController::class, 'updateRoom'])->name('admin.rooms.update');
+    Route::post('/courts/{room}/rent-settings', [AdminController::class, 'updateCourtRentSettings'])->name('admin.courts.rent-settings');
 
     Route::get('/users', [AdminController::class, 'showPanel'])->name('admin.panel');
     Route::post('/users/{user}/update-role', [AdminController::class, 'updateUserRole'])->name('admin.users.update-role');
@@ -95,6 +104,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/trainings/create', [AdminController::class, 'createTraining'])->name('admin.trainings.create');
     Route::get('/trainings/availability', [AdminController::class, 'availability'])->name('admin.trainings.availability');
     Route::post('/trainings', [AdminController::class, 'storeTraining'])->name('admin.trainings.store');
+    Route::post('/trainings/settings/{type}', [AdminController::class, 'updateTrainingTypeSetting'])->name('admin.trainings.settings.update');
 
     Route::get('/cancellations', [AdminController::class, 'cancellations'])->name('admin.cancellations');
     Route::post('/cancellations/{requestModel}/approve', [AdminController::class, 'approveCancellation'])->name('admin.cancellations.approve');

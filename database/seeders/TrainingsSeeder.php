@@ -55,7 +55,7 @@ class TrainingsSeeder extends Seeder
 
                     $roomType = Training::getRoomTypeByTrainingType($type);
 
-                    $room = $this->pickFreeRoom($roomsByType, $allRooms, $roomType, $date, $time, $busyRoom);
+                    $room = $this->pickFreeRoom($roomsByType, $allRooms, $roomType, $type, $date, $time, $busyRoom);
                     if (!$room) {
                         $skippedNoRoom++;
                         continue;
@@ -114,12 +114,17 @@ class TrainingsSeeder extends Seeder
         return $pool[array_rand($pool)];
     }
 
-    private function pickFreeRoom($roomsByType, $allRooms, string $roomType, string $date, string $time, array $busyRoom)
+    private function pickFreeRoom($roomsByType, $allRooms, string $roomType, string $trainingType, string $date, string $time, array $busyRoom)
     {
         $rooms = $roomsByType[$roomType] ?? collect();
+        $rooms = $rooms->filter(function ($room) use ($trainingType) {
+            return Room::acceptsTrainingType($room, $trainingType);
+        });
 
         if ($rooms->isEmpty()) {
-            $rooms = $allRooms;
+            $rooms = $allRooms->filter(function ($room) use ($trainingType) {
+                return Room::acceptsTrainingType($room, $trainingType);
+            });
         }
 
         $candidates = $rooms->shuffle();

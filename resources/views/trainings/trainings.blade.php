@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'Тренировки')
+@section('title', 'тренировки')
 
 @section('content')
 <div class="container">
-    <h1>Календарь тренировок</h1>
+    <h1>календарь тренировок</h1>
 
     @php
         $user = auth()->user();
@@ -26,35 +26,52 @@
         <form method="GET" action="{{ route('trainings.show') }}" class="row" id="filterForm">
             <input type="hidden" name="week" value="{{ $currentOffset }}">
 
-            <label class="form-label" for="type">Тип:</label>
+            <label class="form-label" for="type">тип:</label>
             <select name="type" id="type" class="form-select" onchange="this.form.submit()">
-                <option value="all" {{ $selectedType == 'all' ? 'selected' : '' }}>Все</option>
+                <option value="all" {{ $selectedType == 'all' ? 'selected' : '' }}>все</option>
                 @foreach($types as $key => $name)
                     <option value="{{ $key }}" {{ $selectedType == $key ? 'selected' : '' }}>{{ $name }}</option>
                 @endforeach
             </select>
 
-            <label class="form-label" for="room">Помещение:</label>
+            <label class="form-label" for="room">помещение:</label>
             <select name="room" id="room" class="form-select" onchange="this.form.submit()">
                 @foreach($rooms as $key => $name)
                     <option value="{{ $key }}" {{ $selectedRoom == $key ? 'selected' : '' }}>{{ $name }}</option>
                 @endforeach
             </select>
 
-            <label class="form-label" for="trainer">Тренер:</label>
+            <label class="form-label" for="trainer">тренер:</label>
             <select name="trainer" id="trainer" class="form-select" onchange="this.form.submit()">
                 @foreach($trainers as $key => $name)
                     <option value="{{ $key }}" {{ (string)$selectedTrainer === (string)$key ? 'selected' : '' }}>{{ $name }}</option>
                 @endforeach
             </select>
 
-            <a href="{{ route('trainings.show', ['week' => $currentOffset]) }}" class="btn-secondary">Сбросить</a>
+            @if($user && $user->isUser())
+                <label class="form-label" for="participant">участник:</label>
+                <select name="participant" id="participant" class="form-select" onchange="this.form.submit()">
+                    @php
+                        $participantValue = $participant ?? ('user:' . (int) $user->id);
+                    @endphp
+                    <option value="user:{{ $user->id }}" {{ $participantValue === ('user:' . (int)$user->id) ? 'selected' : '' }}>
+                        {{ $user->full_name }}
+                    </option>
+                    @foreach($children as $child)
+                        <option value="child:{{ $child->id }}" {{ $participantValue === ('child:' . (int)$child->id) ? 'selected' : '' }}>
+                            {{ $child->full_name ?? (($child->first_name ?? '') . ' ' . ($child->last_name ?? '')) }}
+                        </option>
+                    @endforeach
+                </select>
+            @endif
+
+            <a href="{{ route('trainings.show', ['week' => $currentOffset]) }}" class="btn-secondary">сбросить</a>
         </form>
 
         @if($isAdmin)
             <div class="admin-add-under-filters">
-                <a class="btn-admin-add" href="{{ route('admin.trainings.create') }}">Добавить тренировку</a>
-                <a class="btn-admin-cancel" href="{{ route('admin.cancellations') }}">Запросы отмены</a>
+                <a class="btn-admin-add" href="{{ route('admin.trainings.create') }}">добавить тренировку</a>
+                <a class="btn-admin-cancel" href="{{ route('admin.cancellations') }}">запросы отмены</a>
             </div>
         @endif
     </div>
@@ -63,7 +80,7 @@
         @if(!$prevDisabled)
             <a class="calendar-arrow calendar-arrow--left"
                href="{{ route('trainings.show', ['week'=>$prevOffset,'type'=>$selectedType,'room'=>$selectedRoom,'trainer'=>$selectedTrainer]) }}"
-               aria-label="Предыдущие 7 дней">‹</a>
+               aria-label="предыдущие 7 дней">‹</a>
         @else
             <span class="calendar-arrow calendar-arrow--left is-disabled" aria-disabled="true">‹</span>
         @endif
@@ -72,7 +89,7 @@
             <table class="calendar">
                 <thead>
                 <tr>
-                    <th class="time-column">Время</th>
+                    <th class="time-column">время</th>
                     @foreach($calendarData['days'] as $day)
                         @php $isToday = (bool)($day['isToday'] ?? false); @endphp
                         <th class="{{ $isToday ? 'is-today' : '' }}">
@@ -148,17 +165,15 @@
                                     </div>
 
                                     @if($isAdmin && $cellDate)
-                                        <button
-                                            type="button"
-                                            class="cell-add-wide js-open-admin-add"
-                                            data-date="{{ $cellDate }}"
-                                            data-time="{{ $cellTime }}"
-                                            aria-label="Добавить тренировку"
-                                            title="Добавить тренировку"
+                                        <a
+                                            class="cell-add-wide"
+                                            href="{{ route('admin.trainings.create', ['date' => $cellDate, 'time' => $cellTime]) }}"
+                                            aria-label="добавить тренировку"
+                                            title="добавить тренировку"
                                         >
                                             <span class="cell-add-wide__plus">+</span>
-                                            <span class="cell-add-wide__text">Добавить</span>
-                                        </button>
+                                            <span class="cell-add-wide__text">добавить</span>
+                                        </a>
                                     @endif
                                 </div>
                             </td>
@@ -172,7 +187,7 @@
         @if(!$nextDisabled)
             <a class="calendar-arrow calendar-arrow--right"
                href="{{ route('trainings.show', ['week'=>$nextOffset,'type'=>$selectedType,'room'=>$selectedRoom,'trainer'=>$selectedTrainer]) }}"
-               aria-label="Следующие 7 дней">›</a>
+               aria-label="следующие 7 дней">›</a>
         @else
             <span class="calendar-arrow calendar-arrow--right is-disabled" aria-disabled="true">›</span>
         @endif
@@ -186,46 +201,24 @@
         <button class="modal__close" type="button" data-close="1">×</button>
 
         <div class="modal__header">
-            <div class="modal__title" id="trainingModalTitle">Тренировка</div>
+            <div class="modal__title" id="trainingModalTitle">тренировка</div>
             <div class="modal__subtitle muted" id="trainingModalSubtitle"></div>
         </div>
 
         <div class="modal__body">
             <div class="modal-grid">
-                <div class="modal-line"><span class="k">Тип:</span> <span class="v" id="mType"></span></div>
-                <div class="modal-line"><span class="k">Дата:</span> <span class="v" id="mDate"></span></div>
-                <div class="modal-line"><span class="k">Время:</span> <span class="v" id="mTime"></span></div>
-                <div class="modal-line"><span class="k">Длительность:</span> <span class="v" id="mDuration"></span></div>
-                <div class="modal-line"><span class="k">Цена:</span> <span class="v" id="mPrice"></span></div>
-                <div class="modal-line"><span class="k">Мест:</span> <span class="v" id="mSeats"></span></div>
-                <div class="modal-line"><span class="k">Свободно:</span> <span class="v" id="mFree"></span></div>
-                <div class="modal-line"><span class="k">Тренер:</span> <span class="v" id="mTrainer"></span></div>
-                <div class="modal-line"><span class="k">Место:</span> <span class="v" id="mRoom"></span></div>
+                <div class="modal-line"><span class="k">тип:</span> <span class="v" id="mType"></span></div>
+                <div class="modal-line"><span class="k">дата:</span> <span class="v" id="mDate"></span></div>
+                <div class="modal-line"><span class="k">время:</span> <span class="v" id="mTime"></span></div>
+                <div class="modal-line"><span class="k">длительность:</span> <span class="v" id="mDuration"></span></div>
+                <div class="modal-line"><span class="k">цена:</span> <span class="v" id="mPrice"></span></div>
+                <div class="modal-line"><span class="k">мест:</span> <span class="v" id="mSeats"></span></div>
+                <div class="modal-line"><span class="k">свободно:</span> <span class="v" id="mFree"></span></div>
+                <div class="modal-line"><span class="k">тренер:</span> <span class="v" id="mTrainer"></span></div>
+                <div class="modal-line"><span class="k">место:</span> <span class="v" id="mRoom"></span></div>
 
                 @if($user && $user->isUser())
-                    <div class="modal-line modal-line--column is-hidden" id="bookingTargetRow">
-                        <span class="k">Кого записать:</span>
-
-                        <div class="booking-target-wrap">
-                            <label class="form-label" for="bookable_type">Тип участника</label>
-                            <select name="bookable_type" id="bookable_type" class="form-select">
-                                <option value="user">Себя</option>
-                                @if($children->isNotEmpty())
-                                    <option value="child">Ребёнка</option>
-                                @endif
-                            </select>
-
-                            <label class="form-label" for="bookable_id">Участник</label>
-                            <select name="bookable_id" id="bookable_id" class="form-select">
-                                <option value="{{ $user->id }}" data-type="user">{{ $user->full_name }}</option>
-                                @foreach($children as $child)
-                                    <option value="{{ $child->id }}" data-type="child">
-                                        {{ $child->full_name ?? (($child->first_name ?? '') . ' ' . ($child->last_name ?? '')) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
+                    <div class="modal-line modal-line--column is-hidden" id="bookingTargetRow"></div>
                 @endif
 
                 <div class="modal-actions">
@@ -233,22 +226,32 @@
                         @csrf
 
                         @if($user && $user->isUser())
-                            <input type="hidden" name="bookable_type" id="bookable_type_hidden" value="user">
-                            <input type="hidden" name="bookable_id" id="bookable_id_hidden" value="{{ $user->id }}">
+                            @php
+                                $participantValue = $participant ?? ('user:' . (int) $user->id);
+                                $pvType = 'user';
+                                $pvId = (int) $user->id;
+                                if (preg_match('/^(user|child):(\d+)$/', (string) $participantValue, $m)) {
+                                    $pvType = $m[1];
+                                    $pvId = (int) $m[2];
+                                    if ($pvType === 'user') $pvId = (int) $user->id;
+                                }
+                            @endphp
+                            <input type="hidden" name="bookable_type" id="bookable_type_hidden" value="{{ $pvType }}">
+                            <input type="hidden" name="bookable_id" id="bookable_id_hidden" value="{{ $pvId }}">
                         @endif
 
-                        <button type="submit" class="btn-card btn-card--success">Записаться</button>
+                        <button type="submit" class="btn-card btn-card--success">записаться</button>
                     </form>
 
                     <form method="POST" action="#" id="formCancel" class="is-hidden" data-confirm="отменить запись на тренировку">
                         @csrf
-                        <button type="submit" class="btn-card btn-card--danger">Отменить запись</button>
+                        <button type="submit" class="btn-card btn-card--danger">отменить запись</button>
                     </form>
 
                     <form method="POST" action="#" id="formTrainerRequest" class="is-hidden">
                         @csrf
                         <input class="input-mini" type="text" name="reason" placeholder="причина">
-                        <button type="submit" class="btn-card btn-card--warning">Запросить отмену</button>
+                        <button type="submit" class="btn-card btn-card--warning">запросить отмену</button>
                     </form>
 
                     <div class="muted is-hidden" id="modalInfo"></div>
@@ -261,7 +264,10 @@
 <script>
 (function () {
     var modal = document.getElementById('trainingModal');
-    var overlay = modal ? modal.querySelector('.modal__overlay') : null;
+    if (!modal) {
+        return;
+    }
+    var overlay = modal.querySelector('.modal__overlay');
 
     var elType = document.getElementById('mType');
     var elDate = document.getElementById('mDate');
@@ -279,45 +285,22 @@
     var info = document.getElementById('modalInfo');
 
     var bookingTargetRow = document.getElementById('bookingTargetRow');
-    var selectBookableType = document.getElementById('bookable_type');
-    var selectBookableId = document.getElementById('bookable_id');
     var inputBookableType = document.getElementById('bookable_type_hidden');
     var inputBookableId = document.getElementById('bookable_id_hidden');
+    var participantSelect = document.getElementById('participant');
 
-    function syncBookableInputs() {
-        if (!selectBookableType || !selectBookableId || !inputBookableType || !inputBookableId) {
-            return;
-        }
-
-        var selectedType = selectBookableType.value;
-
-        Array.from(selectBookableId.options).forEach(function(option) {
-            var optionType = option.getAttribute('data-type');
-            option.hidden = optionType !== selectedType;
-        });
-
-        var visibleOption = Array.from(selectBookableId.options).find(function(option) {
-            return !option.hidden;
-        });
-
-        if (visibleOption) {
-            selectBookableId.value = visibleOption.value;
-        }
-
-        inputBookableType.value = selectedType;
-        inputBookableId.value = selectBookableId.value;
+    function syncParticipantToHidden() {
+        if (!participantSelect || !inputBookableType || !inputBookableId) return;
+        var v = participantSelect.value || '';
+        var m = v.match(/^(user|child):(\d+)$/);
+        if (!m) return;
+        inputBookableType.value = m[1];
+        inputBookableId.value = m[2];
     }
 
-    if (selectBookableType) {
-        selectBookableType.addEventListener('change', syncBookableInputs);
-    }
-
-    if (selectBookableId) {
-        selectBookableId.addEventListener('change', function() {
-            if (inputBookableId) {
-                inputBookableId.value = selectBookableId.value;
-            }
-        });
+    if (participantSelect) {
+        participantSelect.addEventListener('change', syncParticipantToHidden);
+        syncParticipantToHidden();
     }
 
     function openModal() {
@@ -325,7 +308,7 @@
         modal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('no-scroll');
 
-        const dialog = modal.querySelector('.modal__dialog');
+        var dialog = modal.querySelector('.modal__dialog');
         if (dialog) {
             dialog.scrollTop = 0;
         }
@@ -348,37 +331,41 @@
         x.addEventListener('click', closeModal);
     });
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal && !modal.classList.contains('is-hidden')) {
+    document.addEventListener('keydown', function (e) {
+        if ((e.key === 'Escape' || e.key === 'escape') && !modal.classList.contains('is-hidden')) {
             closeModal();
         }
     });
 
-    document.querySelectorAll('.js-open-training').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+    document.querySelectorAll('.js-open-training').forEach(function (btn) {
+        btn.addEventListener('click', function () {
             var t = {};
             try {
                 t = JSON.parse(btn.getAttribute('data-training') || '{}');
             } catch (e) {}
 
-            elType.textContent = t.type_name || '—';
-            elDate.textContent = t.date_formatted || '—';
-            elTime.textContent = t.time_formatted || '—';
-            elDuration.textContent = t.duration || '—';
-            elPrice.textContent = (parseInt(t.price || 0, 10) || 0) + ' ₽ / чел';
-            elSeats.textContent = (parseInt(t.total_seats || 0, 10) || 0);
-            elFree.textContent = (parseInt(t.free_seats || 0, 10) || 0);
+            if (elType) elType.textContent = t.type_name || '—';
+            if (elDate) elDate.textContent = t.date_formatted || '—';
+            if (elTime) elTime.textContent = t.time_formatted || '—';
+            if (elDuration) elDuration.textContent = t.duration || '—';
+            if (elPrice) elPrice.textContent = (parseInt(t.price || 0, 10) || 0) + ' ₽ / чел';
+            if (elSeats) elSeats.textContent = (parseInt(t.total_seats || 0, 10) || 0);
+            if (elFree) elFree.textContent = (parseInt(t.free_seats || 0, 10) || 0);
 
-            if (t.trainer_name && t.trainer_url) {
-                elTrainer.innerHTML = '<a class="acc-link" href="' + t.trainer_url + '">' + t.trainer_name + '</a>';
-            } else {
-                elTrainer.textContent = t.trainer_name || '—';
+            if (elTrainer) {
+                if (t.trainer_name && t.trainer_url) {
+                    elTrainer.innerHTML = '<a class="acc-link" href="' + t.trainer_url + '">' + t.trainer_name + '</a>';
+                } else {
+                    elTrainer.textContent = t.trainer_name || '—';
+                }
             }
 
-            if (t.room_name && t.room_url) {
-                elRoom.innerHTML = '<a class="acc-link" href="' + t.room_url + '">' + t.room_name + '</a>';
-            } else {
-                elRoom.textContent = t.room_name || '—';
+            if (elRoom) {
+                if (t.room_name && t.room_url) {
+                    elRoom.innerHTML = '<a class="acc-link" href="' + t.room_url + '">' + t.room_name + '</a>';
+                } else {
+                    elRoom.textContent = t.room_name || '—';
+                }
             }
 
             if (info) {
@@ -394,12 +381,7 @@
             if (formBook) formBook.action = t.book_url || '#';
             if (formCancel) formCancel.action = t.cancel_url || '#';
             if (formReq) formReq.action = t.request_cancel_url || '#';
-
-            if (selectBookableType && selectBookableId && inputBookableType && inputBookableId) {
-                selectBookableType.value = 'user';
-                inputBookableType.value = 'user';
-                syncBookableInputs();
-            }
+            syncParticipantToHidden();
 
             if (t.is_cancelled) {
                 if (info) {
@@ -407,7 +389,7 @@
                     info.textContent = 'тренировка отменена';
                 }
             } else if (t.is_booked_by_me) {
-                formCancel.classList.remove('is-hidden');
+                if (formCancel) formCancel.classList.remove('is-hidden');
                 if (info) {
                     info.classList.remove('is-hidden');
                     info.textContent = 'вы уже записаны на эту тренировку';
@@ -428,11 +410,7 @@
                     info.textContent = 'у вас уже есть запись на другое занятие в это же время';
                 }
             } else if (parseInt(t.free_seats || 0, 10) > 0) {
-                formBook.classList.remove('is-hidden');
-
-                if (bookingTargetRow) {
-                    bookingTargetRow.classList.remove('is-hidden');
-                }
+                if (formBook) formBook.classList.remove('is-hidden');
             }
 
             if (formReq) {
@@ -445,9 +423,7 @@
         });
     });
 
-    if (selectBookableType && selectBookableId) {
-        syncBookableInputs();
-    }
+    syncParticipantToHidden();
 })();
 </script>
 @endsection

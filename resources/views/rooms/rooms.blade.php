@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'Корты')
+@section('title', 'корты')
 
 @section('content')
 <div class="container">
-  <h1>Помещения</h1>
+  <h1>помещения</h1>
 
 <div class="corts">
     @foreach ($rooms as $room)
@@ -16,9 +16,9 @@
             @if ($room->type == 'tennis_court')
 
             @if($room->season == 'open')
-                <span>Открытый</span>
+                <span>открытый</span>
             @else
-                <span>Закрытый</span>
+                <span>закрытый</span>
             @endif
 
             @endif
